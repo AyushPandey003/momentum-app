@@ -1,0 +1,276 @@
+import type { Achievement, User } from "./types"
+
+export const ACHIEVEMENTS: Achievement[] = [
+  {
+    id: "first-task",
+    title: "Getting Started",
+    description: "Complete your first task",
+    icon: "🎯",
+    points: 10,
+    requirement: { type: "tasksCompleted", value: 1 },
+  },
+  {
+    id: "task-master-10",
+    title: "Task Master",
+    description: "Complete 10 tasks",
+    icon: "⭐",
+    points: 50,
+    requirement: { type: "tasksCompleted", value: 10 },
+  },
+  {
+    id: "task-master-50",
+    title: "Productivity Pro",
+    description: "Complete 50 tasks",
+    icon: "🏆",
+    points: 200,
+    requirement: { type: "tasksCompleted", value: 50 },
+  },
+  {
+    id: "task-master-100",
+    title: "Century Club",
+    description: "Complete 100 tasks",
+    icon: "💯",
+    points: 500,
+    requirement: { type: "tasksCompleted", value: 100 },
+  },
+  {
+    id: "first-pomodoro",
+    title: "Focus Beginner",
+    description: "Complete your first Pomodoro",
+    icon: "🍅",
+    points: 10,
+    requirement: { type: "pomodorosCompleted", value: 1 },
+  },
+  {
+    id: "pomodoro-25",
+    title: "Focus Master",
+    description: "Complete 25 Pomodoros",
+    icon: "🔥",
+    points: 100,
+    requirement: { type: "pomodorosCompleted", value: 25 },
+  },
+  {
+    id: "pomodoro-100",
+    title: "Concentration King",
+    description: "Complete 100 Pomodoros",
+    icon: "👑",
+    points: 400,
+    requirement: { type: "pomodorosCompleted", value: 100 },
+  },
+  {
+    id: "streak-3",
+    title: "Building Momentum",
+    description: "Maintain a 3-day streak",
+    icon: "📈",
+    points: 30,
+    requirement: { type: "currentStreak", value: 3 },
+  },
+  {
+    id: "streak-7",
+    title: "Week Warrior",
+    description: "Maintain a 7-day streak",
+    icon: "⚡",
+    points: 75,
+    requirement: { type: "currentStreak", value: 7 },
+  },
+  {
+    id: "streak-30",
+    title: "Unstoppable",
+    description: "Maintain a 30-day streak",
+    icon: "🚀",
+    points: 300,
+    requirement: { type: "currentStreak", value: 30 },
+  },
+  {
+    id: "early-bird",
+    title: "Early Bird",
+    description: "Complete a task before 8 AM",
+    icon: "🌅",
+    points: 25,
+    requirement: { type: "special", value: "early-bird" },
+  },
+  {
+    id: "night-owl",
+    title: "Night Owl",
+    description: "Complete a task after 10 PM",
+    icon: "🦉",
+    points: 25,
+    requirement: { type: "special", value: "night-owl" },
+  },
+  {
+    id: "focus-time-10",
+    title: "10 Hours of Focus",
+    description: "Accumulate 10 hours of focus time",
+    icon: "⏰",
+    points: 150,
+    requirement: { type: "totalFocusTime", value: 600 },
+  },
+  {
+    id: "focus-time-50",
+    title: "50 Hours of Focus",
+    description: "Accumulate 50 hours of focus time",
+    icon: "⌛",
+    points: 600,
+    requirement: { type: "totalFocusTime", value: 3000 },
+  },
+]
+
+export function checkAchievements(user: User): Achievement[] {
+  const newAchievements: Achievement[] = []
+
+  for (const achievement of ACHIEVEMENTS) {
+    // Skip if already unlocked (guard for missing achievements array)
+    const unlockedIds = user.achievements ?? []
+    if (unlockedIds.includes(achievement.id)) continue
+
+    let unlocked = false
+
+    switch (achievement.requirement?.type) {
+      case "tasksCompleted": {
+        const req = achievement.requirement?.value
+        if (typeof req === "number") {
+          unlocked = (user.stats?.tasksCompleted ?? 0) >= req
+        }
+        break
+      }
+      case "pomodorosCompleted": {
+        const req = achievement.requirement?.value
+        if (typeof req === "number") {
+          unlocked = (user.stats?.pomodorosCompleted ?? 0) >= req
+        }
+        break
+      }
+      case "currentStreak": {
+        const req = achievement.requirement?.value
+        if (typeof req === "number") {
+          unlocked = (user.stats?.currentStreak ?? user.stats?.streak ?? 0) >= req
+        }
+        break
+      }
+      case "totalFocusTime": {
+        const req = achievement.requirement?.value
+        if (typeof req === "number") {
+          unlocked = (user.stats?.totalFocusTime ?? 0) >= req
+        }
+        break
+      }
+      case "special":
+        // Special achievements are unlocked through specific actions
+        break
+      default:
+        break
+    }
+
+    if (unlocked) {
+      newAchievements.push(achievement)
+    }
+  }
+
+  return newAchievements
+}
+
+export function calculateLevel(points: number): number {
+  // Level formula: level = floor(sqrt(points / 100)) + 1
+  return Math.floor(Math.sqrt(points / 100)) + 1
+}
+
+export function getPointsForNextLevel(currentLevel: number): number {
+  // Points needed for next level
+  return currentLevel * currentLevel * 100
+}
+
+export function getProgressToNextLevel(points: number): number {
+  const currentLevel = calculateLevel(points)
+  const pointsForCurrentLevel = (currentLevel - 1) * (currentLevel - 1) * 100
+  const pointsForNextLevel = getPointsForNextLevel(currentLevel)
+  const pointsInCurrentLevel = points - pointsForCurrentLevel
+  const pointsNeededForLevel = pointsForNextLevel - pointsForCurrentLevel
+
+  return (pointsInCurrentLevel / pointsNeededForLevel) * 100
+}
+
+// Mock leaderboard data
+export function getLeaderboard(): User[] {
+  const raw = localStorage.getItem("currentUser")
+  const currentUser = raw ? JSON.parse(raw) : null
+
+  // Default preferences used when no currentUser is present
+  const defaultPreferences = {
+    pomodoroLength: 25,
+    breakLength: 5,
+    longBreakLength: 15,
+    pomodorosUntilLongBreak: 4,
+    workHoursStart: "09:00",
+    workHoursEnd: "17:00",
+    wellnessReminders: true,
+    wellnessReminderInterval: 30,
+    notificationsEnabled: true,
+    theme: "dark",
+  }
+
+  // Generate mock users for leaderboard
+  const mockUsers: User[] = [
+    {
+      id: "user-1",
+      email: "alex@example.com",
+      name: "Alex Chen",
+      stats: {
+        tasksCompleted: 127,
+        pomodorosCompleted: 89,
+        totalFocusTime: 2230,
+        currentStreak: 12,
+        streak: 12,
+        longestStreak: 18,
+        totalPoints: 1850,
+        level: 5,
+      },
+      achievements: [],
+      preferences: currentUser?.preferences ?? defaultPreferences,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "user-2",
+      email: "sarah@example.com",
+      name: "Sarah Johnson",
+      stats: {
+        tasksCompleted: 98,
+        pomodorosCompleted: 72,
+        totalFocusTime: 1800,
+        currentStreak: 8,
+        streak: 8,
+        longestStreak: 15,
+        totalPoints: 1420,
+        level: 4,
+      },
+      achievements: [],
+      preferences: currentUser?.preferences ?? defaultPreferences,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "user-3",
+      email: "mike@example.com",
+      name: "Mike Rodriguez",
+      stats: {
+        tasksCompleted: 156,
+        pomodorosCompleted: 112,
+        totalFocusTime: 2800,
+        currentStreak: 21,
+        streak: 21,
+        longestStreak: 21,
+        totalPoints: 2340,
+        level: 5,
+      },
+      achievements: [],
+      preferences: currentUser?.preferences ?? defaultPreferences,
+      createdAt: new Date().toISOString(),
+    },
+  ]
+
+  // Add current user if it looks like a valid user object
+  if (currentUser && typeof currentUser === "object" && currentUser.id) {
+    mockUsers.push(currentUser as User)
+  }
+
+  // Sort by total points (guard against missing stats)
+  return mockUsers.sort((a, b) => (b.stats?.totalPoints ?? 0) - (a.stats?.totalPoints ?? 0))
+}
