@@ -1,4 +1,15 @@
-// User types
+// Database User types (from schema)
+export interface DbUser {
+  id: string
+  name: string
+  email: string
+  emailVerified: boolean
+  image: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Application User types (extended with app-specific data)
 export interface User {
   id: string
   email: string
@@ -7,6 +18,9 @@ export interface User {
   achievements?: string[]
   preferences: UserPreferences
   stats: UserStats
+  emailVerified?: boolean
+  image?: string | null
+  updatedAt?: string
 }
 
 export interface UserPreferences {
@@ -143,4 +157,75 @@ export interface WellnessActivity {
   duration: number // minutes
   scheduledTime?: string
   completedAt?: string
+}
+
+// Database types (from schema)
+export interface Session {
+  id: string
+  expiresAt: Date
+  token: string
+  createdAt: Date
+  updatedAt: Date
+  ipAddress: string | null
+  userAgent: string | null
+  userId: string
+  activeOrganizationId: string | null
+}
+
+export interface Account {
+  id: string
+  accountId: string
+  providerId: string
+  userId: string
+  accessToken: string | null
+  refreshToken: string | null
+  idToken: string | null
+  accessTokenExpiresAt: Date | null
+  refreshTokenExpiresAt: Date | null
+  scope: string | null
+  password: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Verification {
+  id: string
+  identifier: string
+  value: string
+  expiresAt: Date
+  createdAt: Date | null
+  updatedAt: Date | null
+}
+
+export interface Organization {
+  id: string
+  name: string
+  slug: string | null
+  logo: string | null
+  createdAt: Date
+  metadata: string | null
+}
+
+export type Role = "member" | "admin" | "owner"
+
+export interface Member {
+  id: string
+  organizationId: string
+  userId: string
+  role: Role
+  createdAt: Date
+}
+
+export interface MemberWithUser extends Member {
+  user: DbUser
+}
+
+export interface Invitation {
+  id: string
+  organizationId: string
+  email: string
+  role: string | null
+  status: string
+  expiresAt: Date
+  inviterId: string
 }

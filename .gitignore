@@ -26,3 +26,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 pnpm-lock.yaml
+BackendGmailService/*
+
+
+
+migrations/
+backend/__pycache__/
+backend/cleaned_output_grouped.json

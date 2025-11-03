@@ -1,19 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import type { User } from "@/lib/types"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Calendar, ListTodo, Trophy, Settings, LogOut, Menu, X, Sparkles, Timer } from "lucide-react"
-import { signOut, getCurrentUser } from "@/lib/auth"
+import { LayoutDashboard, Calendar, ListTodo, Trophy, Settings, LogOut, Menu, X, Sparkles, Timer, Brain, Swords } from "lucide-react"
+import { authClient } from "@/lib/auth-client"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Schedule", href: "/dashboard/schedule", icon: Timer },
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Tasks", href: "/dashboard/tasks", icon: ListTodo },
+  { name: "Challenge", href: "/dashboard/challenge", icon: Sparkles },
+  { name: "AI Mentor", href: "/dashboard/mentor", icon: Brain },
+  { name: "Contests", href: "/dashboard/contests", icon: Swords },
   { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
@@ -22,15 +24,13 @@ export function DashboardNav() {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
+  
+  // Use better-auth session hook for real-time auth state
+  const { data: session } = authClient.useSession()
 
-  useEffect(() => {
-    setUser(getCurrentUser())
-  }, [])
-
-  const handleSignOut = () => {
-    signOut()
-    router.push("/")
+  const handleSignOut = async () => {
+    await authClient.signOut()
+    router.push("/login")
   }
 
   return (
@@ -62,11 +62,13 @@ export function DashboardNav() {
           <div className="px-6 py-4 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                {user?.name.charAt(0).toUpperCase()}
+                {session?.user?.name?.charAt(0).toUpperCase() || "U"}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.name}</p>
-                <p className="text-xs text-muted-foreground">Level {user?.stats.level}</p>
+                <p className="text-sm font-medium truncate">{session?.user?.name || "User"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {session?.user?.email || ""}
+                </p>
               </div>
             </div>
           </div>

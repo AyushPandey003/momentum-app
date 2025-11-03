@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getCurrentUser, updateUser } from "@/lib/auth"
+import { getCurrentUser, updateUser } from "@/lib/auth-utils"
 import { Check } from "lucide-react"
 import type { UserPreferences } from "@/lib/types"
+import { CalendarConnectionCard } from "@/components/calendar-connection-card"
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any | null>(null)
@@ -47,6 +48,9 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 max-w-2xl">
+        {/* Calendar Connection */}
+        <CalendarConnectionCard />
+
         {/* Pomodoro Settings */}
         <Card>
           <CardHeader>

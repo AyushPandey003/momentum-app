@@ -14,7 +14,14 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's your overview.</p>
         </div>
-        <AddTaskDialog />
+        <div className="flex items-center gap-4">
+          <AddTaskDialog />
+          <a href="/api/connect-calendar">
+            <button className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md">
+              Connect Calendar
+            </button>
+          </a>
+        </div>
       </div>
 
       <ProcrastinationAlerts />

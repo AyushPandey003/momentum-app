@@ -4,7 +4,7 @@ import type React from "react"
 
 import { DashboardNav } from "@/components/dashboard-nav"
 import { useEffect, useState } from "react"
-import { getCurrentUser, updateUser } from "@/lib/auth"
+import { getCurrentUser, updateUser } from "@/lib/auth-utils"
 import { checkAchievements } from "@/lib/gamification"
 import { AchievementNotification } from "@/components/achievement-notification"
 import { WellnessReminder } from "@/components/wellness-reminder"
@@ -46,7 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-background">
       <DashboardNav />
       <main className="lg:pl-64">
-        <div className="container max-w-7xl py-8 px-4 sm:px-6 lg:px-8">{children}</div>
+        <div className="max-w-[1920px] mx-auto py-6 px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
 
       {/* Achievement notifications */}

@@ -113,6 +113,38 @@ export const ACHIEVEMENTS: Achievement[] = [
     points: 600,
     requirement: { type: "totalFocusTime", value: 3000 },
   },
+  {
+    id: "contest-first",
+    title: "Contest Rookie",
+    description: "Complete your first contest",
+    icon: "🎪",
+    points: 50,
+    requirement: { type: "special", value: "contest-first" },
+  },
+  {
+    id: "contest-winner",
+    title: "Contest Champion",
+    description: "Win a contest (rank #1)",
+    icon: "🥇",
+    points: 200,
+    requirement: { type: "special", value: "contest-winner" },
+  },
+  {
+    id: "contest-top3",
+    title: "Podium Finisher",
+    description: "Finish in top 3 of a contest",
+    icon: "🥉",
+    points: 100,
+    requirement: { type: "special", value: "contest-top3" },
+  },
+  {
+    id: "contest-veteran",
+    title: "Contest Veteran",
+    description: "Participate in 10 contests",
+    icon: "🎖️",
+    points: 250,
+    requirement: { type: "special", value: "contest-veteran" },
+  },
 ]
 
 export function checkAchievements(user: User): Achievement[] {
@@ -189,7 +221,7 @@ export function getProgressToNextLevel(points: number): number {
   return (pointsInCurrentLevel / pointsNeededForLevel) * 100
 }
 
-// Mock leaderboard data
+// Get leaderboard data from database
 export function getLeaderboard(): User[] {
   const raw = localStorage.getItem("currentUser")
   const currentUser = raw ? JSON.parse(raw) : null
@@ -208,69 +240,13 @@ export function getLeaderboard(): User[] {
     theme: "dark",
   }
 
-  // Generate mock users for leaderboard
-  const mockUsers: User[] = [
-    {
-      id: "user-1",
-      email: "alex@example.com",
-      name: "Alex Chen",
-      stats: {
-        tasksCompleted: 127,
-        pomodorosCompleted: 89,
-        totalFocusTime: 2230,
-        currentStreak: 12,
-        streak: 12,
-        longestStreak: 18,
-        totalPoints: 1850,
-        level: 5,
-      },
-      achievements: [],
-      preferences: currentUser?.preferences ?? defaultPreferences,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "user-2",
-      email: "sarah@example.com",
-      name: "Sarah Johnson",
-      stats: {
-        tasksCompleted: 98,
-        pomodorosCompleted: 72,
-        totalFocusTime: 1800,
-        currentStreak: 8,
-        streak: 8,
-        longestStreak: 15,
-        totalPoints: 1420,
-        level: 4,
-      },
-      achievements: [],
-      preferences: currentUser?.preferences ?? defaultPreferences,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "user-3",
-      email: "mike@example.com",
-      name: "Mike Rodriguez",
-      stats: {
-        tasksCompleted: 156,
-        pomodorosCompleted: 112,
-        totalFocusTime: 2800,
-        currentStreak: 21,
-        streak: 21,
-        longestStreak: 21,
-        totalPoints: 2340,
-        level: 5,
-      },
-      achievements: [],
-      preferences: currentUser?.preferences ?? defaultPreferences,
-      createdAt: new Date().toISOString(),
-    },
-  ]
-
-  // Add current user if it looks like a valid user object
+  // Only show current user on leaderboard if they exist
+  const leaderboardUsers: User[] = []
+  
   if (currentUser && typeof currentUser === "object" && currentUser.id) {
-    mockUsers.push(currentUser as User)
+    leaderboardUsers.push(currentUser as User)
   }
 
   // Sort by total points (guard against missing stats)
-  return mockUsers.sort((a, b) => (b.stats?.totalPoints ?? 0) - (a.stats?.totalPoints ?? 0))
+  return leaderboardUsers.sort((a, b) => (b.stats?.totalPoints ?? 0) - (a.stats?.totalPoints ?? 0))
 }

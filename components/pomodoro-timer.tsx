@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Play, Pause, RotateCcw, Coffee } from "lucide-react"
-import { getCurrentUser, updateUser } from "@/lib/auth"
+import { getCurrentUser, updateUser } from "@/lib/auth-utils"
 import { cn } from "@/lib/utils"
 
 type TimerMode = "work" | "break" | "longBreak"

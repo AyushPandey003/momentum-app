@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getTasks } from "@/lib/data"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth-utils"
 import { detectProcrastination } from "@/lib/ai"
 
 export function ProcrastinationAlerts() {

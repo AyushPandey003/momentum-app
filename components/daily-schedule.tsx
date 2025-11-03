@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { ScheduleBlock, Task } from "@/lib/types"
 import { getTasks, getSchedule, saveScheduleBlock } from "@/lib/data"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth-utils"
 import { generateSmartSchedule, formatTime } from "@/lib/scheduler"
 import { Sparkles, Clock, Coffee, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -35,7 +35,7 @@ export function DailySchedule() {
     // Simulate AI processing
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    const newSchedule = generateSmartSchedule(tasks, user.preferences)
+  const newSchedule = await generateSmartSchedule(tasks, user.preferences)
 
     // Save schedule blocks
     newSchedule.forEach((block) => {

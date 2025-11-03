@@ -1,65 +1,52 @@
 import type { Task, ScheduleBlock, Achievement, LeaderboardEntry } from "./types"
-
-const TASKS_KEY = "momentum_tasks"
-const SCHEDULE_KEY = "momentum_schedule"
-const ACHIEVEMENTS_KEY = "momentum_achievements"
+import { useTaskStore } from "./stores/task-store"
+import { useScheduleStore } from "./stores/schedule-store"
+import { useAchievementStore } from "./stores/achievement-store"
 
 // Task management
 export function getTasks(userId: string): Task[] {
   if (typeof window === "undefined") return []
-  const tasks = localStorage.getItem(`${TASKS_KEY}_${userId}`)
-  return tasks ? JSON.parse(tasks) : []
+  return useTaskStore.getState().getTasks(userId)
 }
 
 export function saveTask(userId: string, task: Task) {
-  const tasks = getTasks(userId)
+  if (typeof window === "undefined") return task
+  
+  const store = useTaskStore.getState()
+  const tasks = store.getTasks(userId)
   const index = tasks.findIndex((t) => t.id === task.id)
 
   if (index >= 0) {
-    tasks[index] = task
+    store.updateTask(userId, task.id, task)
   } else {
-    tasks.push(task)
-  }
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(`${TASKS_KEY}_${userId}`, JSON.stringify(tasks))
+    store.addTask(userId, task)
   }
 
   return task
 }
 
 export function deleteTask(userId: string, taskId: string) {
-  const tasks = getTasks(userId).filter((t) => t.id !== taskId)
-  if (typeof window !== "undefined") {
-    localStorage.setItem(`${TASKS_KEY}_${userId}`, JSON.stringify(tasks))
-  }
+  if (typeof window === "undefined") return
+  useTaskStore.getState().deleteTask(userId, taskId)
 }
 
 // Schedule management
 export function getSchedule(userId: string, date?: string): ScheduleBlock[] {
   if (typeof window === "undefined") return []
-  const schedule = localStorage.getItem(`${SCHEDULE_KEY}_${userId}`)
-  const allBlocks: ScheduleBlock[] = schedule ? JSON.parse(schedule) : []
-
-  if (date) {
-    return allBlocks.filter((block) => block.startTime.startsWith(date))
-  }
-
-  return allBlocks
+  return useScheduleStore.getState().getSchedule(userId, date)
 }
 
 export function saveScheduleBlock(userId: string, block: ScheduleBlock) {
-  const schedule = getSchedule(userId)
-  const index = schedule.findIndex((b) => b.id === block.id)
+  if (typeof window === "undefined") return block
+  
+  const store = useScheduleStore.getState()
+  const schedules = store.getSchedule(userId)
+  const index = schedules.findIndex((b) => b.id === block.id)
 
   if (index >= 0) {
-    schedule[index] = block
+    store.updateScheduleBlock(userId, block.id, block)
   } else {
-    schedule.push(block)
-  }
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(`${SCHEDULE_KEY}_${userId}`, JSON.stringify(schedule))
+    store.addScheduleBlock(userId, block)
   }
 
   return block
@@ -68,8 +55,8 @@ export function saveScheduleBlock(userId: string, block: ScheduleBlock) {
 // Achievements
 export function getAchievements(userId: string): Achievement[] {
   if (typeof window === "undefined") return []
-  const achievements = localStorage.getItem(`${ACHIEVEMENTS_KEY}_${userId}`)
-  return achievements ? JSON.parse(achievements) : getDefaultAchievements()
+  const achievements = useAchievementStore.getState().getAchievements(userId)
+  return achievements.length > 0 ? achievements : getDefaultAchievements()
 }
 
 function getDefaultAchievements(): Achievement[] {

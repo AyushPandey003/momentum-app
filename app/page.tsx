@@ -1,4 +1,4 @@
-import { AuthForm } from "@/components/auth-form"
+// import { AuthForm } from "@/components/auth-form"
 import { Sparkles, Target, Calendar, Trophy, Brain, Zap } from "lucide-react"
 
 export default function HomePage() {
@@ -23,9 +23,9 @@ export default function HomePage() {
         </div>
 
         {/* Auth Form */}
-        <div className="flex justify-center mb-24">
+        {/* <div className="flex justify-center mb-24">
           <AuthForm />
-        </div>
+        </div> */}
 
         {/* Features Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">

@@ -6,26 +6,44 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import type { Task, ScheduleBlock } from "@/lib/types"
 import { getTasks, getSchedule } from "@/lib/data"
-import { getCurrentUser } from "@/lib/auth"
+import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 
 export function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [tasks, setTasks] = useState<Task[]>([])
   const [schedule, setSchedule] = useState<ScheduleBlock[]>([])
-  const [user, setUser] = useState<any | null>(null)
+  const { data: session } = authClient.useSession()
+
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    const u = getCurrentUser()
-    setUser(u)
-  }, [])
+    if (session?.user) {
+      setTasks(getTasks(session.user.id));
+      setSchedule(getSchedule(session.user.id));
 
-  useEffect(() => {
-    if (user) {
-      setTasks(getTasks(user.id))
-      setSchedule(getSchedule(user.id))
+      const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      const fetchEvents = async () => {
+        try {
+          const response = await fetch(
+            `/api/calendar/events?timeMin=${firstDay.toISOString()}&timeMax=${lastDay.toISOString()}`
+          );
+          if (response.ok) {
+            const events = await response.json();
+            setCalendarEvents(events);
+          } else {
+            console.error("Error fetching calendar events:", await response.json());
+          }
+        } catch (error) {
+          console.error("Error fetching calendar events:", error);
+        }
+      };
+
+      fetchEvents();
     }
-  }, [user, currentDate])
+  }, [session, currentDate]);
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
 
@@ -39,9 +57,33 @@ export function CalendarView() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
   }
 
+  const getEventsForDate = (day: number) => {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    return calendarEvents.filter((event) => {
+      const eventStartDate = new Date(event.start.dateTime || event.start.date);
+      return (
+        eventStartDate.getFullYear() === date.getFullYear() &&
+        eventStartDate.getMonth() === date.getMonth() &&
+        eventStartDate.getDate() === date.getDate()
+      );
+    });
+  };
+
+  // Helper to get tasks for a specific day of the current month
   const getTasksForDate = (day: number) => {
-    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-    return tasks.filter((task) => task.dueDate.startsWith(dateStr))
+    // Tasks have a dueDate string; create a Date and compare year/month/day
+    return tasks.filter((task) => {
+      try {
+        const d = new Date(task.dueDate)
+        return (
+          d.getFullYear() === currentDate.getFullYear() &&
+          d.getMonth() === currentDate.getMonth() &&
+          d.getDate() === day
+        )
+      } catch (e) {
+        return false
+      }
+    })
   }
 
   const isToday = (day: number) => {
@@ -107,6 +149,9 @@ export function CalendarView() {
             const dayTasks = getTasksForDate(day)
             const today = isToday(day)
 
+            const dayEvents = getEventsForDate(day);
+            const dayItems = [...dayTasks, ...dayEvents];
+
             return (
               <div
                 key={day}
@@ -117,13 +162,19 @@ export function CalendarView() {
               >
                 <div className={cn("text-sm font-medium mb-1", today && "text-primary")}>{day}</div>
                 <div className="space-y-1">
-                  {dayTasks.slice(0, 2).map((task) => (
-                    <div key={task.id} className="text-xs truncate px-1 py-0.5 rounded bg-primary/20 text-primary">
-                      {task.title}
+                  {dayItems.slice(0, 2).map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "text-xs truncate px-1 py-0.5 rounded",
+                        item.source === "manual" ? "bg-primary/20 text-primary" : "bg-green-500/20 text-green-500"
+                      )}
+                    >
+                      {item.title}
                     </div>
                   ))}
-                  {dayTasks.length > 2 && (
-                    <div className="text-xs text-muted-foreground px-1">+{dayTasks.length - 2} more</div>
+                  {dayItems.length > 2 && (
+                    <div className="text-xs text-muted-foreground px-1">+{dayItems.length - 2} more</div>
                   )}
                 </div>
               </div>

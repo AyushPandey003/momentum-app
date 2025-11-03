@@ -5,13 +5,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { Task } from "@/lib/types"
+import type { Task, User } from "@/lib/types"
 import { getTasks, saveTask, deleteTask } from "@/lib/data"
-import { getCurrentUser, updateUser } from "@/lib/auth"
+import { getCurrentUser, updateUser } from "@/lib/auth-utils"
 import { Clock, Calendar, Trash2, MoreVertical, ChevronDown, ChevronRight } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { AIDecomposeDialog } from "./ai-decompose-dialog"
+import { AddTaskDialog } from "./add-task-dialog"
 
 const priorityColors = {
   low: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -22,8 +23,9 @@ const priorityColors = {
 
 export function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [user, setUser] = useState<User | null>(null)
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
-  const [user, setUser] = useState<any | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
     const u = getCurrentUser()
@@ -77,11 +79,23 @@ export function TaskList() {
     setTasks(getTasks(user.id))
   }
 
-  const handleDelete = (taskId: string) => {
-    if (!user) return
-    deleteTask(user.id, taskId)
-    setTasks(getTasks(user.id))
-  }
+  const handleDelete = async (taskId: string) => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        refreshTasks();
+      } else {
+        console.error("Error deleting task:", await response.json());
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
 
   const toggleExpanded = (taskId: string) => {
     const newExpanded = new Set(expandedTasks)
@@ -111,6 +125,14 @@ export function TaskList() {
 
   return (
     <div className="space-y-3">
+      {editingTask && (
+        <AddTaskDialog
+          isOpen={!!editingTask}
+          setIsOpen={() => setEditingTask(null)}
+          task={editingTask}
+          onSuccess={refreshTasks}
+        />
+      )}
       {sortedTasks.map((task) => {
         const isExpanded = expandedTasks.has(task.id)
         const hasSubtasks = task.subtasks.length > 0
@@ -151,6 +173,10 @@ export function TaskList() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingTask(task)}>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete

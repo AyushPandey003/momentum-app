@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,8 +13,36 @@ import {
 import { Plus } from "lucide-react"
 import { TaskForm } from "./task-form"
 
-export function AddTaskDialog() {
-  const [open, setOpen] = useState(false)
+export function AddTaskDialog({
+  isOpen: isOpenProp,
+  setIsOpen: setIsOpenProp,
+  task,
+  onSuccess,
+}: {
+  isOpen?: boolean
+  setIsOpen?: (open: boolean) => void
+  task?: any
+  onSuccess?: () => void
+}) {
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  // Keep internal state in sync when parent controls open prop
+  useEffect(() => {
+    if (typeof isOpenProp === "boolean") {
+      setInternalOpen(isOpenProp)
+    }
+  }, [isOpenProp])
+
+  const open = typeof isOpenProp === "boolean" ? isOpenProp : internalOpen
+  const setOpen = (v: boolean) => {
+    if (setIsOpenProp) setIsOpenProp(v)
+    else setInternalOpen(v)
+  }
+
+  const handleSuccess = () => {
+    if (onSuccess) onSuccess()
+    setOpen(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -24,13 +52,23 @@ export function AddTaskDialog() {
           Add Task
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create New Task</DialogTitle>
-          <DialogDescription>Add a new task to your schedule. You can use AI to break it down later.</DialogDescription>
+          <DialogTitle>{task ? "Edit Task" : "Create New Task"}</DialogTitle>
+          <DialogDescription>
+            {task
+              ? "Edit the details of your task."
+              : "Add a new task and let Momentum's AI help you schedule it perfectly."}
+          </DialogDescription>
         </DialogHeader>
-        <TaskForm onSuccess={() => setOpen(false)} onCancel={() => setOpen(false)} />
+        <TaskForm
+          task={task}
+          onSuccess={() => {
+            handleSuccess()
+          }}
+          onCancel={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
-  )
+  );
 }

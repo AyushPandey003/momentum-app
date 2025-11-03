@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Trophy, TrendingUp } from "lucide-react"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth-utils"
 import { getProgressToNextLevel, getPointsForNextLevel } from "@/lib/gamification"
 
 export function LevelProgress() {

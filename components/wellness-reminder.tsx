@@ -7,7 +7,7 @@ import { X, Check } from "lucide-react"
 import { getRandomWellnessTip, shouldShowWellnessReminder } from "@/lib/wellness"
 import type { WellnessTip } from "@/lib/wellness"
 import { cn } from "@/lib/utils"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth-utils"
 
 export function WellnessReminder() {
   const [currentTip, setCurrentTip] = useState<WellnessTip | null>(null)
