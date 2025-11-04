@@ -66,6 +66,13 @@ export interface Task {
   createdAt: string
   completedAt?: string
   aiDecomposed: boolean
+  managerEmail?: string
+  verificationImageUrl?: string
+  managerStatus?: "pending" | "accepted"
+  managerToken?: string
+  managerUserId?: string
+  managerConfirmed?: boolean
+  managerConfirmedAt?: string
 }
 
 export interface Subtask {

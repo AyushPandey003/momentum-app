@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Calendar, ListTodo, Trophy, Settings, LogOut, Menu, X, Sparkles, Timer, Brain, Swords } from "lucide-react"
+import { LayoutDashboard, Calendar, ListTodo, Trophy, Settings, LogOut, Menu, X, Sparkles, Timer, Brain, Swords, Users } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 
 const navigation = [
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Schedule", href: "/dashboard/schedule", icon: Timer },
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Tasks", href: "/dashboard/tasks", icon: ListTodo },
+  { name: "Manager", href: "/dashboard/manager", icon: Users },
   { name: "Challenge", href: "/dashboard/challenge", icon: Sparkles },
   { name: "AI Mentor", href: "/dashboard/mentor", icon: Brain },
   { name: "Contests", href: "/dashboard/contests", icon: Swords },

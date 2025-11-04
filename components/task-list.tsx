@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Task, User } from "@/lib/types"
-import { getTasks, saveTask, deleteTask } from "@/lib/data"
 import { getCurrentUser, updateUser } from "@/lib/auth-utils"
-import { Clock, Calendar, Trash2, MoreVertical, ChevronDown, ChevronRight } from "lucide-react"
+import { authClient } from "@/lib/auth-client"
+import { Clock, Calendar, Trash2, MoreVertical, ChevronDown, ChevronRight, CheckCircle2, UserCheck, ClockIcon } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { AIDecomposeDialog } from "./ai-decompose-dialog"
 import { AddTaskDialog } from "./add-task-dialog"
+import { TaskCompletionDialog } from "./task-completion-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 const priorityColors = {
   low: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -25,58 +27,157 @@ export function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [completionTask, setCompletionTask] = useState<Task | null>(null)
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  const { data: session } = authClient.useSession()
 
   useEffect(() => {
     const u = getCurrentUser()
     setUser(u)
-    if (u) {
-      setTasks(getTasks(u.id))
+    fetchTasks()
+  }, [session])
+
+  const fetchTasks = async () => {
+    if (!session?.user) {
+      setLoading(false)
+      return
     }
-  }, [])
+
+    try {
+      setLoading(true)
+      const res = await fetch("/api/tasks")
+      if (res.ok) {
+        const data = await res.json()
+        setTasks(data.tasks || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load tasks. Please refresh.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const refreshTasks = () => {
-    if (user) {
-      setTasks(getTasks(user.id))
-    }
+    fetchTasks()
   }
 
-  const handleToggleComplete = (task: Task) => {
-    if (!user) return
-
-    const updatedTask: Task = {
-      ...task,
-      status: task.status === "completed" ? "todo" : "completed",
-      completedAt: task.status === "completed" ? undefined : new Date().toISOString(),
+  const handleToggleComplete = async (task: Task) => {
+    if (task.status === "completed") {
+      // Unmark as completed
+      try {
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...task,
+            status: "todo",
+            completedAt: null,
+          }),
+        })
+        if (res.ok) {
+          refreshTasks()
+        }
+      } catch (error) {
+        console.error("Failed to update task:", error)
+      }
+      return
     }
 
-    saveTask(user.id, updatedTask)
-    setTasks(getTasks(user.id))
+    // If task has manager, require verification image
+    if (task.managerEmail && task.managerStatus === "accepted") {
+      setCompletionTask(task)
+      return
+    }
 
-    // Update user stats if completing
-    if (updatedTask.status === "completed") {
-      updateUser({
-        stats: {
-          ...user.stats,
-          tasksCompleted: user.stats.tasksCompleted + 1,
-          totalPoints: user.stats.totalPoints + 10,
-        },
+    // No manager or manager not accepted yet - can complete directly
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...task,
+          status: "completed",
+          completedAt: new Date().toISOString(),
+        }),
       })
+      if (res.ok) {
+        refreshTasks()
+        const currentUser = getCurrentUser()
+        if (currentUser) {
+          updateUser({
+            stats: {
+              ...currentUser.stats,
+              tasksCompleted: currentUser.stats.tasksCompleted + 1,
+              totalPoints: currentUser.stats.totalPoints + 10,
+            },
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update task:", error)
     }
   }
 
-  const handleToggleSubtask = (task: Task, subtaskId: string) => {
-    if (!user) return
+  const handleCompleteWithImage = async (taskId: string, imageUrl: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
 
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...task,
+          status: "completed",
+          completedAt: new Date().toISOString(),
+          verificationImageUrl: imageUrl,
+        }),
+      })
+      if (res.ok) {
+        refreshTasks()
+        const currentUser = getCurrentUser()
+        if (currentUser) {
+          updateUser({
+            stats: {
+              ...currentUser.stats,
+              tasksCompleted: currentUser.stats.tasksCompleted + 1,
+              totalPoints: currentUser.stats.totalPoints + 10,
+            },
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Failed to complete task:", error)
+      throw error
+    }
+  }
+
+  const handleToggleSubtask = async (task: Task, subtaskId: string) => {
     const updatedSubtasks = task.subtasks.map((st) => (st.id === subtaskId ? { ...st, completed: !st.completed } : st))
 
-    const updatedTask: Task = {
-      ...task,
-      subtasks: updatedSubtasks,
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...task,
+          subtasks: updatedSubtasks,
+        }),
+      })
+      if (res.ok) {
+        refreshTasks()
+      }
+    } catch (error) {
+      console.error("Failed to update subtask:", error)
     }
-
-    saveTask(user.id, updatedTask)
-    setTasks(getTasks(user.id))
   }
 
   const handleDelete = async (taskId: string) => {
@@ -113,6 +214,53 @@ export function TaskList() {
     return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
   })
 
+  const getManagerStatusBadge = (task: Task) => {
+    if (!task.managerEmail) return null
+    if (task.managerStatus === "accepted") {
+      if (task.status === "completed") {
+        if (task.managerConfirmed) {
+          return (
+            <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              Confirmed
+            </Badge>
+          )
+        } else {
+          return (
+            <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+              <ClockIcon className="w-3 h-3 mr-1" />
+              Pending Review
+            </Badge>
+          )
+        }
+      }
+      return (
+        <Badge variant="outline" className="text-xs">
+          <UserCheck className="w-3 h-3 mr-1" />
+          Managed
+        </Badge>
+      )
+    }
+    if (task.managerStatus === "pending") {
+      return (
+        <Badge variant="outline" className="text-xs text-muted-foreground">
+          Invite Pending
+        </Badge>
+      )
+    }
+    return null
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <p className="text-muted-foreground">Loading tasks...</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (tasks.length === 0) {
     return (
       <Card>
@@ -133,11 +281,18 @@ export function TaskList() {
           onSuccess={refreshTasks}
         />
       )}
+      {completionTask && (
+        <TaskCompletionDialog
+          task={completionTask}
+          isOpen={!!completionTask}
+          onClose={() => setCompletionTask(null)}
+          onComplete={handleCompleteWithImage}
+        />
+      )}
       {sortedTasks.map((task) => {
         const isExpanded = expandedTasks.has(task.id)
         const hasSubtasks = task.subtasks.length > 0
         const completedSubtasks = task.subtasks.filter((st) => st.completed).length
-
         return (
           <Card key={task.id} className={cn(task.status === "completed" && "opacity-60")}>
             <CardContent className="p-4">
@@ -207,6 +362,8 @@ export function TaskList() {
                         {completedSubtasks}/{task.subtasks.length} subtasks
                       </Badge>
                     )}
+
+                    {getManagerStatusBadge(task)}
 
                     {!hasSubtasks && task.status !== "completed" && (
                       <AIDecomposeDialog task={task} onSuccess={refreshTasks} />

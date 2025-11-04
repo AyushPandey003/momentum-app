@@ -17,6 +17,7 @@ import { saveTask } from "@/lib/data"
 import { authClient } from "@/lib/auth-client"
 import { Calendar, Clock, Sparkles, Zap, Brain, CalendarCheck, CheckCircle2, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { UploadButton } from "@/lib/uploadthing"
 
 interface TaskFormProps {
   task?: Task
@@ -30,6 +31,7 @@ export function TaskForm({ task, onSuccess, onCancel }: TaskFormProps) {
   const [aiDecompose, setAiDecompose] = useState(false)
   const [autoSchedule, setAutoSchedule] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [verificationUrl, setVerificationUrl] = useState<string | undefined>(task?.verificationImageUrl)
   const { toast } = useToast()
   
   // Use better-auth session hook for real-time auth state
@@ -69,6 +71,8 @@ export function TaskForm({ task, onSuccess, onCancel }: TaskFormProps) {
       source: "manual",
       createdAt: task?.createdAt || new Date().toISOString(),
       aiDecomposed: aiDecompose,
+      managerEmail: (formData.get("managerEmail") as string) || undefined,
+      verificationImageUrl: verificationUrl,
     }
     
     console.log("📝 Task data prepared:", newTask)
@@ -118,6 +122,19 @@ export function TaskForm({ task, onSuccess, onCancel }: TaskFormProps) {
         // Also save to localStorage for immediate access
         saveTask(session.user.id, createdTask);
         console.log("💾 Task saved to localStorage")
+
+        // If manager email provided, trigger invite
+        if (newTask.managerEmail) {
+          try {
+            await fetch("/api/tasks/manager-invite", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ taskId: createdTask.id }),
+            })
+          } catch (e) {
+            console.warn("Manager invite send failed", e)
+          }
+        }
 
         // Show success animation
         toast({
@@ -282,6 +299,41 @@ export function TaskForm({ task, onSuccess, onCancel }: TaskFormProps) {
               min="15"
               step="15"
             />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="managerEmail">Manager Email (optional)</Label>
+          <Input
+            id="managerEmail"
+            name="managerEmail"
+            type="email"
+            defaultValue={task?.managerEmail}
+            placeholder="mom@example.com"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Verification Image (optional)</Label>
+          <div className="flex items-center gap-2">
+            <UploadButton
+              endpoint="imageUploader"
+              onClientUploadComplete={(res) => {
+                const url = res?.[0]?.url ?? (res?.[0] as any)?.ufsUrl
+                if (url) {
+                  setVerificationUrl(url)
+                  toast({ title: "Uploaded", description: "Verification image attached." })
+                }
+              }}
+              onUploadError={(error: Error) => {
+                toast({ title: "Upload failed", description: error.message, variant: "destructive" })
+              }}
+            />
+            {verificationUrl && (
+              <a href={verificationUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                View image
+              </a>
+            )}
           </div>
         </div>
 

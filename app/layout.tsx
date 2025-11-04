@@ -5,6 +5,9 @@ import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { Navbar } from "@/components/navbar"
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin"
+import { extractRouterConfig } from "uploadthing/server"
+import { ourFileRouter } from "@/app/api/uploadthing/core"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -21,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+        <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <Navbar />
         <main className="flex-1">
           <Suspense fallback={null}>{children}</Suspense>

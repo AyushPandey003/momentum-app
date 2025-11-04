@@ -1,40 +1,72 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteTask as dbDeleteTask, getTasks, saveTask as dbSaveTask } from "@/lib/data";
-import { deleteCalendarEvent } from "@/lib/calendar";
-import { updateCalendarEvent } from "@/lib/calendar";
-import { getSession } from "next-auth/react";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { db } from "@/db/drizzle";
+import { task } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession({ req });
+  const session = await auth.api.getSession({ headers: await headers() });
 
-  if (!session || !session.user) {
+  if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const taskId = params.id;
-
-  const tasks = getTasks(userId);
-  const task = tasks.find((t) => t.id === taskId);
-
-  if (!task) {
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
-  }
+  const { id: taskId } = await params;
 
   try {
-    const updatedTaskData = await req.json();
-    const updatedTask = { ...task, ...updatedTaskData };
+    const body = await req.json();
+    const {
+      title,
+      description,
+      dueDate,
+      priority,
+      status,
+      estimatedTime,
+      actualTime,
+      tags,
+      subtasks,
+      source,
+      sourceId,
+      createdAt,
+      completedAt,
+      aiDecomposed,
+      managerEmail,
+      verificationImageUrl,
+    } = body;
 
-    if (updatedTask.calendarEventId) {
-      await updateCalendarEvent(updatedTask.calendarEventId, updatedTask);
+    const updated = await db
+      .update(task)
+      .set({
+        title,
+        description,
+        dueDate,
+        priority,
+        status,
+        estimatedTime,
+        actualTime,
+        tags,
+        subtasks,
+        source,
+        sourceId,
+        createdAt,
+        completedAt,
+        aiDecomposed,
+        managerEmail,
+        verificationImageUrl,
+      })
+      .where(and(eq(task.id, taskId), eq(task.userId, userId)))
+      .returning();
+
+    if (!updated.length) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    dbSaveTask(userId, updatedTask);
-
-    return NextResponse.json(updatedTask);
+    return NextResponse.json(updated[0]);
   } catch (error) {
     console.error("Error updating task:", error);
     return NextResponse.json(
@@ -47,30 +79,26 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession({ req });
+  const session = await auth.api.getSession({ headers: await headers() });
 
-  if (!session || !session.user) {
+  if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const taskId = params.id;
-
-  const tasks = getTasks(userId);
-  const task = tasks.find((t) => t.id === taskId);
-
-  if (!task) {
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
-  }
+  const { id: taskId } = await params;
 
   try {
-    if (task.calendarEventId) {
-      await deleteCalendarEvent(task.calendarEventId);
-    }
+    const deleted = await db
+      .delete(task)
+      .where(and(eq(task.id, taskId), eq(task.userId, userId)))
+      .returning();
 
-    dbDeleteTask(userId, taskId);
+    if (!deleted.length) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
 
     return NextResponse.json({ message: "Task deleted successfully" });
   } catch (error) {

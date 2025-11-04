@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
       source,
       sourceId,
       aiDecomposed,
+      managerEmail,
+      verificationImageUrl,
     } = body;
 
     // Insert task into database
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       completedAt: null,
       aiDecomposed: aiDecomposed || false,
+      managerEmail: managerEmail || null,
+      verificationImageUrl: verificationImageUrl || null,
     }).returning();
 
     return NextResponse.json({

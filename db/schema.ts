@@ -76,7 +76,15 @@ export const task = pgTable("task", {
     sourceId: text('source_id'),
     createdAt: text('created_at').notNull(),
     completedAt: text('completed_at'),
-    aiDecomposed: boolean('ai_decomposed').default(false).notNull()
+    aiDecomposed: boolean('ai_decomposed').default(false).notNull(),
+    // Task manager and verification
+    managerEmail: text('manager_email'),
+    verificationImageUrl: text('verification_image_url'),
+    managerStatus: text('manager_status').default('pending'), // 'pending' | 'accepted'
+    managerToken: text('manager_token'),
+    managerUserId: text('manager_user_id').references(() => user.id, { onDelete: 'set null' }),
+    managerConfirmed: boolean('manager_confirmed').default(false).notNull(),
+    managerConfirmedAt: text('manager_confirmed_at')
 });
 
 export const scheduleBlockTypeEnum = pgEnum("schedule_block_type", ["task", "break", "wellness", "event", "pomodoro"]);
