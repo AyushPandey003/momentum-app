@@ -7,6 +7,7 @@ export const user = pgTable("user", {
     email: text('email').notNull().unique(),
     emailVerified: boolean('email_verified').$defaultFn(() => false).notNull(),
     image: text('image'),
+    leetcodeUsername: text('leetcode_username'),
     createdAt: timestamp('created_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull(),
     updatedAt: timestamp('updated_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull()
 });
@@ -77,6 +78,7 @@ export const task = pgTable("task", {
     createdAt: text('created_at').notNull(),
     completedAt: text('completed_at'),
     aiDecomposed: boolean('ai_decomposed').default(false).notNull(),
+    skipCount: integer('skip_count').default(0).notNull(), // Phase 1: Track task avoidance
     // Task manager and verification
     managerEmail: text('manager_email'),
     verificationImageUrl: text('verification_image_url'),
@@ -299,7 +301,7 @@ export const contestRelations = relations(contest, ({ many, one }) => ({
     })
 }));
 
-export const contestParticipantRelations = relations(contestParticipant, ({ one, many }) => ({
+export const contestParticipantRelations = relations(contestParticipant, ({ one }) => ({
     contest: one(contest, {
         fields: [contestParticipant.contestId],
         references: [contest.id]
@@ -307,8 +309,9 @@ export const contestParticipantRelations = relations(contestParticipant, ({ one,
     user: one(user, {
         fields: [contestParticipant.userId],
         references: [user.id]
-    }),
-    submissions: many(contestSubmission)
+    })
+    // Note: submissions relation removed - contestSubmission doesn't have a direct FK to contestParticipant
+    // Use userId + contestId combination to query submissions if needed
 }));
 
 export const contestInvitationRelations = relations(contestInvitation, ({ one }) => ({

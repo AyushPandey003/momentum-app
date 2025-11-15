@@ -145,6 +145,30 @@ export const ACHIEVEMENTS: Achievement[] = [
     points: 250,
     requirement: { type: "special", value: "contest-veteran" },
   },
+  {
+    id: "contest_points_10k",
+    title: "Contest Master",
+    description: "Earn 10,000+ contest points",
+    icon: "🏆",
+    points: 500,
+    requirement: { type: "special", value: "contest_points_10k" },
+  },
+  {
+    id: "contest_points_20k_2wins",
+    title: "Elite Competitor",
+    description: "Earn 20,000+ points and win 2+ contests",
+    icon: "👑",
+    points: 1000,
+    requirement: { type: "special", value: "contest_points_20k_2wins" },
+  },
+  {
+    id: "contest_wins_5",
+    title: "Champion",
+    description: "Win 5+ contests",
+    icon: "⭐",
+    points: 1500,
+    requirement: { type: "special", value: "contest_wins_5" },
+  },
 ]
 
 export function checkAchievements(user: User): Achievement[] {

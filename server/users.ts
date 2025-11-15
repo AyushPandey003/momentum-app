@@ -63,8 +63,13 @@ export const getGlobalLeaderboard = async (limit: number = 50) => {
 
         // Transform and combine data
         return usersWithStats.map((u) => {
+            // userStats.totalPoints already includes contest points (updated by Go backend)
+            // So we use it directly, but also add contestScore if it's not already included
+            // This handles cases where Go backend hasn't updated yet
             const contestScore = contestScoreMap.get(u.id) || 0;
-            const combinedPoints = (u.totalPoints || 0) + contestScore;
+            const statsPoints = u.totalPoints || 0;
+            // Use the higher value to ensure we don't lose points
+            const totalPoints = Math.max(statsPoints, contestScore);
 
             return {
                 id: u.id,
@@ -78,7 +83,7 @@ export const getGlobalLeaderboard = async (limit: number = 50) => {
                     currentStreak: u.currentStreak || 0,
                     streak: u.currentStreak || 0,
                     longestStreak: u.longestStreak || 0,
-                    totalPoints: combinedPoints,
+                    totalPoints: totalPoints,
                     level: u.level || 1,
                 },
                 achievements: achievementMap.get(u.id) || [],

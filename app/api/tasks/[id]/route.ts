@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { db } from "@/db/drizzle";
 import { task } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { analyticsLogger } from "@/lib/analytics-logger";
 
 export async function PUT(
   req: NextRequest,
@@ -39,6 +40,11 @@ export async function PUT(
       verificationImageUrl,
     } = body;
 
+    // Get the old task to compare status changes
+    const oldTask = await db.query.task.findFirst({
+      where: and(eq(task.id, taskId), eq(task.userId, userId)),
+    });
+
     const updated = await db
       .update(task)
       .set({
@@ -64,6 +70,41 @@ export async function PUT(
 
     if (!updated.length) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // Log analytics events based on status changes
+    try {
+      const userSnapshot = await analyticsLogger.getUserSnapshot(userId);
+      
+      // Log task completion
+      if (status === 'completed' && oldTask?.status !== 'completed') {
+        await analyticsLogger.logTaskCompleted({
+          userId,
+          taskId: updated[0].id,
+          title: updated[0].title,
+          priority: updated[0].priority as any,
+          dueDate: updated[0].dueDate,
+          actualTime: updated[0].actualTime,
+          estimatedTime: updated[0].estimatedTime,
+          skipCount: oldTask?.skipCount || 0,
+          userSnapshot,
+        });
+      }
+      
+      // Log task overdue
+      if (status === 'overdue' && oldTask?.status !== 'overdue') {
+        await analyticsLogger.logTaskOverdue({
+          userId,
+          taskId: updated[0].id,
+          title: updated[0].title,
+          priority: updated[0].priority as any,
+          dueDate: updated[0].dueDate,
+          skipCount: oldTask?.skipCount || 0,
+          userSnapshot,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to log task update:', error);
     }
 
     return NextResponse.json(updated[0]);

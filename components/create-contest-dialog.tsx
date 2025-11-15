@@ -2,6 +2,7 @@
 
 import { useState, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -23,13 +24,20 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CreateContestDialogProps {
   children?: ReactNode;
   onSuccess?: () => void;
+  userContestCount?: number;
 }
 
-export function CreateContestDialog({ children, onSuccess }: CreateContestDialogProps) {
+export function CreateContestDialog({ children, onSuccess, userContestCount = 0 }: CreateContestDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [contestName, setContestName] = useState("");
@@ -46,6 +54,7 @@ export function CreateContestDialog({ children, onSuccess }: CreateContestDialog
   const [tags, setTags] = useState<string>("");
   
   const { toast } = useToast();
+  const isLimitReached = userContestCount >= 2;
 
   const handleAddEmail = () => {
     setEmails([...emails, ""]);
@@ -126,13 +135,15 @@ export function CreateContestDialog({ children, onSuccess }: CreateContestDialog
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          difficulty,
-          questionCount,
-          contestName,
-          description,
-          durationMinutes,
-          emails: validEmails, // Pass emails to backend for invitation system
-        }),
+            difficulty,
+            questionCount,
+            contestName,
+            description,
+            durationMinutes,
+            // Send the selected start date/time so the server can store the scheduled start
+            startDate: startDateTime.toISOString(),
+            emails: validEmails // Pass emails to backend for invitation system
+          }),
       });
 
       if (!response.ok) {
@@ -190,11 +201,22 @@ export function CreateContestDialog({ children, onSuccess }: CreateContestDialog
       }
     } catch (error) {
       console.error(error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create contest. Please try again.",
-        variant: "destructive",
-      });
+      const errorMessage = error instanceof Error ? error.message : "Failed to create contest. Please try again.";
+      
+      // Check if it's a limit error
+      if (errorMessage.includes("maximum limit")) {
+        toast({
+          title: "Contest Limit Reached",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -202,21 +224,52 @@ export function CreateContestDialog({ children, onSuccess }: CreateContestDialog
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {children ? (
-        <DialogTrigger asChild>
-          {children}
-        </DialogTrigger>
-      ) : (
-        <DialogTrigger asChild>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Contest
-          </Button>
-        </DialogTrigger>
-      )}
+      <TooltipProvider>
+        {children ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn(isLimitReached && "cursor-not-allowed")}>
+                <DialogTrigger asChild disabled={isLimitReached}>
+                  {children}
+                </DialogTrigger>
+              </span>
+            </TooltipTrigger>
+            {isLimitReached && (
+              <TooltipContent>
+                <p>You have reached the maximum limit of 2 contests.</p>
+                <p className="text-xs text-muted-foreground mt-1">Delete an existing contest to create a new one.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn(isLimitReached && "cursor-not-allowed")}>
+                <DialogTrigger asChild disabled={isLimitReached}>
+                  <Button disabled={isLimitReached}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {isLimitReached ? `Contest Limit Reached (${userContestCount}/2)` : "Create Contest"}
+                  </Button>
+                </DialogTrigger>
+              </span>
+            </TooltipTrigger>
+            {isLimitReached && (
+              <TooltipContent>
+                <p>You have reached the maximum limit of 2 contests.</p>
+                <p className="text-xs text-muted-foreground mt-1">Delete an existing contest to create a new one.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
+      </TooltipProvider>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Contest/Challenge</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Create New Contest/Challenge
+            <Badge variant={userContestCount >= 2 ? "destructive" : "secondary"} className="text-xs">
+              {userContestCount}/2 Contests
+            </Badge>
+          </DialogTitle>
           <DialogDescription>
             Create a contest with custom difficulty, duration, and question count. Invite up to 5 friends to compete!
           </DialogDescription>
@@ -341,19 +394,89 @@ export function CreateContestDialog({ children, onSuccess }: CreateContestDialog
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold">Contest Schedule</h3>
             
-            <div className="space-y-2">
-              <Label>
-                Start Date & Time <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="datetime-local"
-                value={startDateTime.toISOString().slice(0, 16)}
-                onChange={(e) => setStartDateTime(new Date(e.target.value))}
-                min={new Date().toISOString().slice(0, 16)}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Contest will end automatically after {durationMinutes} minutes
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>
+                  Start Date <span className="text-red-500">*</span>
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDateTime && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDateTime ? format(startDateTime, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDateTime}
+                      onSelect={(date) => {
+                        if (date) {
+                          // Preserve existing time when changing date
+                          const newDate = new Date(date);
+                          newDate.setHours(startDateTime.getHours());
+                          newDate.setMinutes(startDateTime.getMinutes());
+                          setStartDateTime(newDate);
+                        }
+                      }}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Start Time <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={`${startDateTime.getHours().toString().padStart(2, '0')}:${startDateTime.getMinutes().toString().padStart(2, '0')}`}
+                  onValueChange={(time) => {
+                    const [hours, minutes] = time.split(':').map(Number);
+                    const newDate = new Date(startDateTime);
+                    newDate.setHours(hours);
+                    newDate.setMinutes(minutes);
+                    setStartDateTime(newDate);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {Array.from({ length: 96 }, (_, i) => {
+                      const hours = Math.floor(i / 4);
+                      const minutes = (i % 4) * 15;
+                      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                      const displayTime = new Date(0, 0, 0, hours, minutes).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      return (
+                        <SelectItem key={timeStr} value={timeStr}>
+                          {displayTime}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+              <p className="font-medium mb-1">Contest Duration: {durationMinutes} minutes</p>
+              <p>
+                Start: {format(startDateTime, "PPP 'at' p")}
+              </p>
+              <p>
+                End: {format(new Date(startDateTime.getTime() + durationMinutes * 60000), "PPP 'at' p")}
               </p>
             </div>
           </div>
@@ -380,7 +503,7 @@ export function CreateContestDialog({ children, onSuccess }: CreateContestDialog
             </div>
             <div className="space-y-2">
               {emails.map((email, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={`email-input-${index}`} className="flex gap-2">
                   <Input
                     type="email"
                     placeholder="participant@example.com"

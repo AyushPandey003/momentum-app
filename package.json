@@ -8,9 +8,13 @@
     "lint": "next lint",
     "start": "next start",
     "seed:questions": "tsx scripts/seed-questions.ts",
-    "check:contest": "tsx scripts/check-contest-setup.ts"
+    "check:contest": "tsx scripts/check-contest-setup.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-accordion": "1.2.2",
@@ -50,6 +54,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
+    "csv-parse": "^6.1.0",
     "date-fns": "4.1.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.6",
@@ -59,6 +64,7 @@
     "googleapis": "^162.0.0",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
+    "mongodb": "^7.0.0",
     "next": "15.2.4",
     "next-themes": "^0.4.6",
     "react": "^19",

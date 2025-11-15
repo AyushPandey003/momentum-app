@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { db } from "@/db/drizzle";
 import { task } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { analyticsLogger } from "@/lib/analytics-logger";
 
 // GET all tasks for user
 export async function GET(req: NextRequest) {
@@ -82,7 +83,27 @@ export async function POST(req: NextRequest) {
       aiDecomposed: aiDecomposed || false,
       managerEmail: managerEmail || null,
       verificationImageUrl: verificationImageUrl || null,
+      skipCount: 0,
     }).returning();
+
+    // Log task creation to MongoDB Analytics
+    try {
+      const userSnapshot = await analyticsLogger.getUserSnapshot(session.user.id);
+      await analyticsLogger.logTaskCreated({
+        userId: session.user.id,
+        taskId: newTask[0].id,
+        title: newTask[0].title,
+        priority: newTask[0].priority as any,
+        dueDate: newTask[0].dueDate,
+        estimatedTime: newTask[0].estimatedTime,
+        aiDecomposed: newTask[0].aiDecomposed,
+        tags: newTask[0].tags as string[],
+        source: newTask[0].source as any,
+        userSnapshot,
+      });
+    } catch (error) {
+      console.error('Failed to log task creation:', error);
+    }
 
     return NextResponse.json({
       success: true,

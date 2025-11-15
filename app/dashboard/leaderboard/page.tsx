@@ -27,6 +27,7 @@ export default function LeaderboardPage() {
   const [completedContests, setCompletedContests] = useState<any[]>([])
   const [userStats, setUserStats] = useState<{totalContests: number, totalScore: number, averageScore: number, bestRank: number | null}>({ totalContests: 0, totalScore: 0, averageScore: 0, bestRank: null })
   const [loading, setLoading] = useState(true)
+  const [achievements, setAchievements] = useState<{unlocked: any[], locked: any[]}>({ unlocked: [], locked: [] })
   const currentUser = getCurrentUser()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -41,6 +42,17 @@ export default function LeaderboardPage() {
         console.error("Error loading leaderboard:", error)
         // Fallback to local data
         setLeaderboard(getLeaderboard())
+      }
+      
+      // Load achievements from API
+      try {
+        const achievementsRes = await fetch("/api/achievements")
+        if (achievementsRes.ok) {
+          const achievementsData = await achievementsRes.json()
+          setAchievements(achievementsData)
+        }
+      } catch (error) {
+        console.error("Error loading achievements:", error)
       }
       
       if (currentUser) {
@@ -156,9 +168,29 @@ export default function LeaderboardPage() {
     }
   }
 
-  const userAchievements = currentUser?.achievements ?? []
-  const unlockedAchievements = currentUser ? ACHIEVEMENTS.filter((a) => userAchievements.includes(a.id)) : []
-  const lockedAchievements = currentUser ? ACHIEVEMENTS.filter((a) => !userAchievements.includes(a.id)) : []
+  // Combine API achievements (contest) with all ACHIEVEMENTS
+  // API returns contest achievements with unlock status, we merge with all achievements
+  const apiUnlockedIds = new Set(achievements.unlocked.map((a: any) => a.id));
+  const apiLockedIds = new Set(achievements.locked.map((a: any) => a.id));
+  const userAchievementIds = new Set(currentUser?.achievements ?? []);
+  
+  // For each achievement, check if it's unlocked via API or user data
+  const allAchievementsWithStatus = ACHIEVEMENTS.map(ach => {
+    if (apiUnlockedIds.has(ach.id)) {
+      return { ...ach, unlocked: true };
+    }
+    if (apiLockedIds.has(ach.id)) {
+      return { ...ach, unlocked: false };
+    }
+    // For non-contest achievements, check local user data
+    return { 
+      ...ach, 
+      unlocked: userAchievementIds.has(ach.id)
+    };
+  });
+  
+  const unlockedAchievements = allAchievementsWithStatus.filter(a => a.unlocked);
+  const lockedAchievements = allAchievementsWithStatus.filter(a => !a.unlocked);
 
   return (
     <div className="space-y-6">
@@ -167,7 +199,7 @@ export default function LeaderboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">Leaderboard & Achievements</h1>
           <p className="text-muted-foreground">Compete with others and unlock achievements</p>
         </div>
-        <CreateContestDialog />
+        <CreateContestDialog userContestCount={userContests.length} />
       </div>
 
       <LevelProgress />

@@ -30,18 +30,22 @@ export async function createContest(data: {
 
     const contestId = `contest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // For real-time contests, dates are optional (set when organizer starts)
-    const showResultsAfter = data.endDate ? new Date(data.endDate) : null;
-    if (showResultsAfter) {
-        showResultsAfter.setMinutes(showResultsAfter.getMinutes() + (data.durationMinutes || 30));
-    }
+    // Calculate dates: if startDate provided, use it; otherwise set to now (for immediate start)
+    // For real-time contests, we set startDate to now and endDate based on duration
+    const now = new Date();
+    const startDate = data.startDate || now;
+    const durationMs = (data.durationMinutes || 30) * 60 * 1000;
+    const endDate = data.endDate || new Date(startDate.getTime() + durationMs);
+    
+    // showResultsAfter is when to reveal results (after contest ends)
+    const showResultsAfter = new Date(endDate.getTime());
     
     const contest = await db.insert(schema.contest).values({
         id: contestId,
         name: data.name,
         description: data.description,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
+        startDate: startDate,
+        endDate: endDate,
         status: "draft",
         createdBy: session.user.id,
         contestType: data.contestType || "standard",
@@ -54,8 +58,8 @@ export async function createContest(data: {
         maxParticipants: data.maxParticipants || 5,
         isPrivate: data.isPrivate !== undefined ? data.isPrivate : true,
         waitingRoomActive: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: now,
+        updatedAt: now
     }).returning();
 
     // Generate questions for the contest based on filters
@@ -276,20 +280,23 @@ export async function getUserContests(userId: string) {
         orderBy: desc(schema.contest.createdAt)
     });
 
-    // Combine and deduplicate, excluding expired contests
+    // Combine and deduplicate, excluding expired/finished contests.
+    const isActiveContest = (c: any) => {
+        if (!c) return false;
+        // Exclude explicit finished status
+        if (c.status === "finished") return false;
+        // Use actualEndTime if present (organizer-ended), otherwise fall back to endDate
+        const endTime = c.actualEndTime || c.endDate;
+        if (endTime) {
+            const end = (endTime instanceof Date) ? endTime : new Date(endTime);
+            if (end.getTime() < now.getTime() && c.status !== "draft") return false;
+        }
+        return true;
+    };
+
     const allContests = [
-        ...participations.map(p => p.contest).filter(c => {
-            // Exclude finished contests or those past end date (unless not started)
-            if (c.status === "finished") return false;
-            if (c.endDate && new Date(c.endDate) < now && c.status !== "draft") return false;
-            return true;
-        }),
-        ...createdContests.filter(c => {
-            // Exclude finished contests or those past end date (unless not started)
-            if (c.status === "finished") return false;
-            if (c.endDate && new Date(c.endDate) < now && c.status !== "draft") return false;
-            return true;
-        })
+        ...participations.map(p => p.contest).filter(isActiveContest),
+        ...createdContests.filter(isActiveContest)
     ];
 
     // Remove duplicates by ID
@@ -309,8 +316,11 @@ export async function getUserContests(userId: string) {
 
 export async function getCompletedContests(userId: string) {
     const now = new Date();
-    
-    // Get completed contests where user participated
+
+    // Robust DB-level queries to fetch contests that are finished or whose end time has passed.
+    // This avoids relying on client-side filtering which can miss contests due to serialization.
+
+    // Fetch participant rows and map their contests; make the completed check resilient.
     const participations = await db.query.contestParticipant.findMany({
         where: eq(schema.contestParticipant.userId, userId),
         with: {
@@ -322,7 +332,6 @@ export async function getCompletedContests(userId: string) {
         }
     });
 
-    // Get completed contests where user is the creator
     const createdContests = await db.query.contest.findMany({
         where: eq(schema.contest.createdBy, userId),
         with: {
@@ -330,30 +339,38 @@ export async function getCompletedContests(userId: string) {
         }
     });
 
-    // Combine and filter completed or expired contests
+    // Helper to determine if a contest is completed/expired
+    const isCompleted = (c: any) => {
+        try {
+            if (!c) return false;
+            if (c.status === "finished") return true;
+            // consider actualEndTime as authoritative if present
+            const endTime = c.actualEndTime || c.endDate;
+            if (!endTime) return false;
+            const end = (endTime instanceof Date) ? endTime : new Date(endTime);
+            return end.getTime() < now.getTime();
+        } catch (e) {
+            return false;
+        }
+    };
+
     const allContests = [
-        ...participations.map(p => p.contest).filter(c => {
-            // Include if status is finished OR if end date has passed
-            return c.status === "finished" || 
-                   (c.endDate && new Date(c.endDate) < now);
-        }),
-        ...createdContests.filter(c => {
-            // Include if status is finished OR if end date has passed
-            return c.status === "finished" || 
-                   (c.endDate && new Date(c.endDate) < now);
-        })
+        ...participations.map(p => p.contest).filter(isCompleted),
+        ...createdContests.filter(isCompleted)
     ];
 
-    // Remove duplicates by ID
+    // Deduplicate
     const uniqueContests = allContests.filter((contest, index, self) =>
         index === self.findIndex((c) => c.id === contest.id)
     );
 
-    // Sort by end date (most recent first)
+    // Sort by end time (most recent first). Use actualEndTime or endDate.
     uniqueContests.sort((a, b) => {
-        const dateA = a.endDate || new Date(0);
-        const dateB = b.endDate || new Date(0);
-        return dateB.getTime() - dateA.getTime();
+        const getEnd = (c: any) => {
+            const t = c.actualEndTime || c.endDate || c.createdAt || new Date(0);
+            return (t instanceof Date) ? t.getTime() : new Date(t).getTime();
+        };
+        return getEnd(b) - getEnd(a);
     });
 
     return uniqueContests;
@@ -541,7 +558,9 @@ export async function getContestLeaderboard(contestId: string) {
     let submissionsByUser: Record<string, { total: number; correct: number }> = {};
 
     // For finished contests, use contest_result table (final results)
+    // If no results exist yet, fallback to contest_participant
     if (contest.status === "finished") {
+        // Try to get results from contest_result first
         const results = await db
             .select({
                 userId: schema.contestResult.userId,
@@ -556,36 +575,74 @@ export async function getContestLeaderboard(contestId: string) {
             .where(eq(schema.contestResult.contestId, contestId))
             .orderBy(schema.contestResult.rank);
 
-        // Get submissions for submission counts
-        const participantSubmissions = await db
-            .select({
-                userId: schema.contestSubmission.userId,
-                isCorrect: schema.contestSubmission.isCorrect,
-            })
-            .from(schema.contestSubmission)
-            .where(eq(schema.contestSubmission.contestId, contestId));
+        // If no results in contest_result, use contest_participant as fallback
+        if (results.length === 0) {
+            const participants = await db
+                .select({
+                    userId: schema.contestParticipant.userId,
+                    score: schema.contestParticipant.score,
+                    userName: schema.user.name,
+                    userImage: schema.user.image,
+                    submittedAt: schema.contestParticipant.submittedAt,
+                })
+                .from(schema.contestParticipant)
+                .leftJoin(schema.user, eq(schema.contestParticipant.userId, schema.user.id))
+                .where(eq(schema.contestParticipant.contestId, contestId));
 
-        // Group submissions by userId
-        submissionsByUser = participantSubmissions.reduce((acc, sub) => {
-            if (!acc[sub.userId]) {
-                acc[sub.userId] = { total: 0, correct: 0 };
-            }
-            acc[sub.userId].total += 1;
-            if (sub.isCorrect) {
-                acc[sub.userId].correct += 1;
-            }
-            return acc;
-        }, {} as Record<string, { total: number; correct: number }>);
+            // Sort by score and assign ranks
+            const sorted = participants.sort((a, b) => b.score - a.score);
+            sortedParticipants = sorted.map((p, index) => ({
+                userId: p.userId,
+                userName: p.userName,
+                userImage: p.userImage,
+                score: p.score,
+                rank: index + 1,
+                submittedAt: p.submittedAt,
+                timeSpentSeconds: 0, // Will be filled from participant stats
+            }));
+        } else {
+            // Get submissions for submission counts
+            const participantSubmissions = await db
+                .select({
+                    userId: schema.contestSubmission.userId,
+                    isCorrect: schema.contestSubmission.isCorrect,
+                })
+                .from(schema.contestSubmission)
+                .where(eq(schema.contestSubmission.contestId, contestId));
 
-        sortedParticipants = results.map(r => ({
-            userId: r.userId,
-            userName: r.userName,
-            userImage: r.userImage,
-            score: r.score,
-            rank: r.rank,
-            submittedAt: r.completedAt,
-            timeSpentSeconds: 0, // Not stored in contest_result
-        }));
+            // Also fetch participant runtime stats (timeSpentSeconds) if available
+            const participantRows = await db
+                .select({ userId: schema.contestParticipant.userId, timeSpentSeconds: schema.contestParticipant.timeSpentSeconds })
+                .from(schema.contestParticipant)
+                .where(eq(schema.contestParticipant.contestId, contestId));
+
+            const participantStatsByUser = participantRows.reduce((acc, p) => {
+                acc[p.userId] = { timeSpentSeconds: p.timeSpentSeconds || 0 };
+                return acc;
+            }, {} as Record<string, { timeSpentSeconds: number }> );
+
+            // Group submissions by userId
+            submissionsByUser = participantSubmissions.reduce((acc, sub) => {
+                if (!acc[sub.userId]) {
+                    acc[sub.userId] = { total: 0, correct: 0 };
+                }
+                acc[sub.userId].total += 1;
+                if (sub.isCorrect) {
+                    acc[sub.userId].correct += 1;
+                }
+                return acc;
+            }, {} as Record<string, { total: number; correct: number }>);
+
+            sortedParticipants = results.map(r => ({
+                userId: r.userId,
+                userName: r.userName,
+                userImage: r.userImage,
+                score: r.score,
+                rank: r.rank,
+                submittedAt: r.completedAt,
+                timeSpentSeconds: participantStatsByUser[r.userId]?.timeSpentSeconds ?? 0,
+            }));
+        }
     } else {
         // For in-progress or draft contests, use contest_participant table
         const participants = await db
@@ -681,6 +738,44 @@ export async function deleteContest(contestId: string) {
         throw new Error("Cannot delete a contest that is in progress");
     }
 
+    // If this is a real-time contest (contestType === "quick_fire"), 
+    // we need to notify the Go WebSocket service to shut down the hub
+    if (contest.contestType === "quick_fire") {
+        try {
+            const GO_SERVICE_URL = process.env.GO_WEBSOCKET_SERVICE_URL || "http://localhost:8080";
+            
+            // Get JWT token for Go service authentication
+            const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/contest/token`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ contestId }),
+            });
+
+            if (tokenResponse.ok) {
+                const { token } = await tokenResponse.json();
+                
+                // Call Go service to delete the contest hub
+                const goResponse = await fetch(`${GO_SERVICE_URL}/api/contests/${contestId}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                    },
+                });
+
+                if (!goResponse.ok) {
+                    console.error(`Failed to delete contest ${contestId} from Go service: ${goResponse.status}`);
+                    // Continue with DB deletion even if Go service fails
+                }
+            }
+        } catch (error) {
+            console.error("Error notifying Go service about contest deletion:", error);
+            // Continue with DB deletion even if Go service notification fails
+        }
+    }
+
+    // Delete from database
     await db.delete(schema.contest).where(eq(schema.contest.id, contestId));
 
     return { success: true };

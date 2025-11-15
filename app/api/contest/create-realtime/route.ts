@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { db } from "@/db/drizzle";
+import { schema } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * API Route: Create Contest via Go WebSocket Service
@@ -16,8 +19,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check contest creation limit (2 contests per user)
+    const userContests = await db.query.contest.findMany({
+      where: eq(schema.contest.createdBy, session.user.id)
+    });
+
+    if (userContests.length >= 2) {
+      return NextResponse.json(
+        { error: "You have reached the maximum limit of 2 contests. Please delete an existing contest to create a new one." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
-    const { difficulty, questionCount, contestName, description, durationMinutes, emails } = body;
+    const { difficulty, questionCount, contestName, description, durationMinutes, emails, startDate } = body;
 
     if (!difficulty || !questionCount) {
       return NextResponse.json(
@@ -74,18 +89,40 @@ export async function POST(req: NextRequest) {
 
     // Store contest metadata in Next.js database for invitation system
     // This allows us to track invitations, participants, and link to WebSocket contests
-    const { db } = await import("@/db/drizzle");
-    const { schema } = await import("@/db/schema");
     
+    // Determine start and end times. Prefer client-provided startDate if present.
     const now = new Date();
-    const endDate = new Date(now);
+    const start = startDate ? new Date(startDate) : now;
+    const endDate = new Date(start);
     endDate.setMinutes(endDate.getMinutes() + (durationMinutes || 30));
 
-    const dbContest = await db.insert(schema.contest).values({
+    // Avoid duplicate insert if Go service already created the contest
+    let dbContest;
+    const existing = await db.query.contest.findFirst({ where: eq(schema.contest.id, wsContestId) });
+    if (existing) {
+      // Update existing record with any provided metadata from the modal so fields like
+      // description/startDate/endDate are reflected when the modal was used to create the contest.
+      const updated = await db
+        .update(schema.contest)
+        .set({
+          name: contestName || existing.name,
+          description: description !== undefined ? (description || null) : existing.description,
+          startDate: start || existing.startDate,
+          endDate: endDate || existing.endDate,
+          durationMinutes: durationMinutes || existing.durationMinutes,
+          showResultsAfter: endDate || existing.showResultsAfter,
+          updatedAt: now
+        })
+        .where(eq(schema.contest.id, wsContestId))
+        .returning();
+
+      dbContest = updated.length ? updated : [existing];
+    } else {
+      dbContest = await db.insert(schema.contest).values({
       id: wsContestId, // Use the WebSocket contest ID for consistency
       name: contestName || `${session.user.name || 'User'}'s ${difficulty} Contest`, // Use the name from frontend or fallback
       description: description || null,
-      startDate: now,
+      startDate: start,
       endDate: endDate,
       status: "draft", // Will be "in_progress" when organizer starts via WebSocket
       createdBy: session.user.id,
@@ -101,7 +138,8 @@ export async function POST(req: NextRequest) {
       waitingRoomActive: false,
       createdAt: now,
       updatedAt: now
-    }).returning();
+      }).returning();
+    }
 
     // Automatically add creator as participant (organizer)
     await db.insert(schema.contestParticipant).values({

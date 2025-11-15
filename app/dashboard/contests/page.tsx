@@ -412,7 +412,7 @@ export default function ContestsPage() {
             Create, join, and compete in coding contests
           </p>
         </div>
-        <CreateContestDialog onSuccess={loadContests}>
+        <CreateContestDialog onSuccess={loadContests} userContestCount={myContests.length}>
           <Button size="lg">
             <Plus className="w-5 h-5 mr-2" />
             Create Contest
@@ -472,7 +472,7 @@ export default function ContestsPage() {
                     <p className="text-muted-foreground text-center mb-4">
                       There are no active contests at the moment. Create one to get started!
                     </p>
-                    <CreateContestDialog onSuccess={loadContests}>
+                    <CreateContestDialog onSuccess={loadContests} userContestCount={myContests.length}>
                       <Button>
                         <Plus className="w-4 h-4 mr-2" />
                         Create Contest
@@ -518,7 +518,7 @@ export default function ContestsPage() {
                     <p className="text-muted-foreground text-center mb-4">
                       You haven't created any contests yet. Create your first contest!
                     </p>
-                    <CreateContestDialog onSuccess={loadContests}>
+                    <CreateContestDialog onSuccess={loadContests} userContestCount={myContests.length}>
                       <Button>
                         <Plus className="w-4 h-4 mr-2" />
                         Create Contest

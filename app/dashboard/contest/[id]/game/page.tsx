@@ -122,12 +122,10 @@ export default function ContestGamePage() {
       ws.onclose = (event) => {
         console.log("WebSocket closed:", event.code, event.reason);
         
-        // Don't reconnect if game is finished or closed normally
         if (event.code === 1000 || gameState.status === "finished") {
           return;
         }
 
-        // Attempt to reconnect
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
           setTimeout(() => {
@@ -653,7 +651,7 @@ export default function ContestGamePage() {
                   <div className="space-y-3">
                     {currentQuestion.options.map((option, index) => (
                       <div
-                        key={index}
+                        key={`option-${currentQuestion.questionId}-${index}`}
                         className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-colors ${
                           selectedAnswer === index
                             ? "border-primary bg-primary/5"

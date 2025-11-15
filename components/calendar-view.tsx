@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import type { Task, ScheduleBlock } from "@/lib/types"
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react"
+import type { Task, ScheduleBlock, GoogleCalendarEvent } from "@/lib/types"
 import { getTasks, getSchedule } from "@/lib/data"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
@@ -15,7 +15,7 @@ export function CalendarView() {
   const [schedule, setSchedule] = useState<ScheduleBlock[]>([])
   const { data: session } = authClient.useSession()
 
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
 
   useEffect(() => {
     if (session?.user) {
@@ -60,7 +60,7 @@ export function CalendarView() {
   const getEventsForDate = (day: number) => {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     return calendarEvents.filter((event) => {
-      const eventStartDate = new Date(event.start.dateTime || event.start.date);
+      const eventStartDate = new Date(event.start?.dateTime || event.start?.date || '');
       return (
         eventStartDate.getFullYear() === date.getFullYear() &&
         eventStartDate.getMonth() === date.getMonth() &&
@@ -150,7 +150,17 @@ export function CalendarView() {
             const today = isToday(day)
 
             const dayEvents = getEventsForDate(day);
-            const dayItems = [...dayTasks, ...dayEvents];
+            const dayItems = [
+              ...dayTasks.map(t => ({ ...t, itemType: 'task' as const })),
+              ...dayEvents.map(e => ({ 
+                id: e.id, 
+                title: e.summary || 'Untitled Event',
+                itemType: 'event' as const,
+                start: e.start,
+                end: e.end,
+                location: e.location
+              }))
+            ];
 
             return (
               <div
@@ -166,11 +176,17 @@ export function CalendarView() {
                     <div
                       key={item.id}
                       className={cn(
-                        "text-xs truncate px-1 py-0.5 rounded",
-                        item.source === "manual" ? "bg-primary/20 text-primary" : "bg-green-500/20 text-green-500"
+                        "text-xs truncate px-1 py-0.5 rounded flex items-center gap-1",
+                        item.itemType === "task" 
+                          ? "bg-primary/20 text-primary" 
+                          : "bg-green-500/20 text-green-600"
                       )}
+                      title={item.title}
                     >
-                      {item.title}
+                      {item.itemType === "event" && (
+                        <CalendarIcon className="w-3 h-3 flex-shrink-0" />
+                      )}
+                      <span className="truncate">{item.title}</span>
                     </div>
                   ))}
                   {dayItems.length > 2 && (

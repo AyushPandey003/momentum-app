@@ -9,6 +9,7 @@
 
 # production
 /build
+/gowebsocket
 
 # debug
 npm-debug.log*

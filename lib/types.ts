@@ -108,6 +108,49 @@ export interface CalendarEvent {
   source: "google" | "outlook" | "apple"
 }
 
+// Google Calendar Event (from Google Calendar API)
+export interface GoogleCalendarEvent {
+  id: string
+  summary?: string
+  description?: string
+  start?: {
+    dateTime?: string
+    date?: string
+    timeZone?: string
+  }
+  end?: {
+    dateTime?: string
+    date?: string
+    timeZone?: string
+  }
+  location?: string
+  status?: string
+  htmlLink?: string
+  creator?: {
+    email?: string
+    displayName?: string
+  }
+  organizer?: {
+    email?: string
+    displayName?: string
+  }
+  attendees?: Array<{
+    email?: string
+    displayName?: string
+    responseStatus?: string
+  }>
+  colorId?: string
+  kind?: string
+  etag?: string
+  created?: string
+  updated?: string
+  recurringEventId?: string
+  originalStartTime?: {
+    dateTime?: string
+    date?: string
+  }
+}
+
 // LMS integration types
 export interface LMSAssignment {
   id: string
