@@ -31,10 +31,10 @@ export async function GET(
     }
 
     // Require the accepting user's email to match the invited manager (case-insensitive)
-    let sessionEmail = session.user.email
+    let sessionEmail: string | undefined = session.user.email
     if (!sessionEmail) {
       const u = await db.query.user.findFirst({ where: eq(userTable.id, session.user.id) })
-      sessionEmail = u?.email || undefined
+      sessionEmail = u?.email
     }
     const invitedEmail = t.managerEmail?.trim().toLowerCase()
     const currentEmail = sessionEmail?.trim().toLowerCase()
