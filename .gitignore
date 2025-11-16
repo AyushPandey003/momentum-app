@@ -33,4 +33,3 @@ BackendGmailService/*
 
 migrations/
 backend/__pycache__/
-backend/cleaned_output_grouped.json
