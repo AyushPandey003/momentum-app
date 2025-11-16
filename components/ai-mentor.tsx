@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { Brain, Send, Lightbulb, Sparkles, Loader2 } from "lucide-react"
 
-// Backend URL with py-api prefix for Python FastAPI endpoints
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ;
+// Backend URL — build origin-aware same-origin base for client-side calls
+const BACKEND_URL = (typeof window !== 'undefined' ? window.location.origin : '') + '/api';
 
 interface MentorResponse {
   response: string;
@@ -42,7 +42,7 @@ export function AIMentor() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/backend/mentor/ask`, {
+      const response = await fetch(`${BACKEND_URL}/mentor/ask`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,7 +80,7 @@ export function AIMentor() {
 
   const handleGetRandomTips = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/backend/mentor/tips?count=3`);
+      const response = await fetch(`${BACKEND_URL}/mentor/tips?count=3`);
       if (response.ok) {
         const data = await response.json();
         setRandomTips(data.tips);
