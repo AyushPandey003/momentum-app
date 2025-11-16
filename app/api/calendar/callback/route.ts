@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Exchange authorization code for tokens
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
     const callbackUrl = `${baseUrl.replace(/\/$/, '')}/api/calendar/callback`;
     
     const oAuth2Client = new google.auth.OAuth2(

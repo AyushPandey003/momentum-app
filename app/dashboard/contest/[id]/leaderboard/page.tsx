@@ -46,7 +46,7 @@ export default function ContestLeaderboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8080";
+  const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
 
   const connectWebSocket = useCallback(() => {
     if (!contestId || contest?.status !== "in_progress") return;

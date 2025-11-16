@@ -2,7 +2,10 @@ import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL is not set' }, { status: 500 });
+  }
   const callbackUrl = `${baseUrl.replace(/\/$/, '')}/api/calendar/callback`;
   
   const oAuth2Client = new google.auth.OAuth2(

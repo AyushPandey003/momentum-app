@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Brain, Send, Lightbulb, Sparkles, Loader2 } from "lucide-react"
 
 // Backend URL with py-api prefix for Python FastAPI endpoints
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000/py-api";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ;
 
 interface MentorResponse {
   response: string;

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the Go service URL from environment
-    const GO_SERVICE_URL = process.env.GO_WEBSOCKET_SERVICE_URL || "http://localhost:8080";
+    const GO_SERVICE_URL = process.env.GO_WEBSOCKET_SERVICE_URL ;
 
     // Login to Go service to get JWT token
     // Pass the real user ID and info from the session

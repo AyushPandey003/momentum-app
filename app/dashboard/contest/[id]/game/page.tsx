@@ -68,7 +68,7 @@ export default function ContestGamePage() {
   const [contestCreatorId, setContestCreatorId] = useState<string | null>(null);
 
   // WebSocket URL from environment or default (Go service on port 8080)
-  const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8080";
+  const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
 
   // Handle redirect to leaderboard when game finishes
   useEffect(() => {

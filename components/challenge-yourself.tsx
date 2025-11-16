@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog"
 
 // Backend URL with py-api prefix for Python FastAPI endpoints
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000/py-api";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ;
 
 interface QuizQuestion {
   q_id: string;

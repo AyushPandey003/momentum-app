@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the Go service URL from environment
-    const GO_SERVICE_URL = process.env.GO_WEBSOCKET_SERVICE_URL || "http://localhost:8080";
+    const GO_SERVICE_URL = process.env.GO_WEBSOCKET_SERVICE_URL ;
 
     // Login to Go service
     const goResponse = await fetch(`${GO_SERVICE_URL}/login`, {
