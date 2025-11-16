@@ -78,7 +78,7 @@ export function ChallengeYourself() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/categories`);
+        const response = await fetch(`${BACKEND_URL}/backend/categories`);
         if (response.ok) {
           const data = await response.json();
           setCategories(data);
@@ -132,7 +132,7 @@ export function ChallengeYourself() {
     setResult(null);
     setSelectedAnswer(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/quiz/random?category=${categoryToUse}`);
+      const response = await fetch(`${BACKEND_URL}/backend/quiz/random?category=${categoryToUse}`);
       if (!response.ok) {
         throw new Error("Failed to fetch question.");
       }
@@ -157,7 +157,7 @@ export function ChallengeYourself() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/quiz/check`, {
+      const response = await fetch(`${BACKEND_URL}/backend/quiz/check`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -195,7 +195,7 @@ export function ChallengeYourself() {
     if (!question) return;
 
     try {
-      await fetch(`${BACKEND_URL}/quiz/skip`, {
+      await fetch(`${BACKEND_URL}/backend/quiz/skip`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

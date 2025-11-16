@@ -15,6 +15,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
+    "https://momentum003.vercel.app",
 ]
 
 app.add_middleware(

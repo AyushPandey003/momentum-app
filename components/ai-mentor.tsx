@@ -42,7 +42,7 @@ export function AIMentor() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/mentor/ask`, {
+      const response = await fetch(`${BACKEND_URL}/backend/mentor/ask`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,7 +80,7 @@ export function AIMentor() {
 
   const handleGetRandomTips = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/mentor/tips?count=3`);
+      const response = await fetch(`${BACKEND_URL}/backend/mentor/tips?count=3`);
       if (response.ok) {
         const data = await response.json();
         setRandomTips(data.tips);
