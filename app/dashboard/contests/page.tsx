@@ -263,8 +263,14 @@ export default function ContestsPage() {
   const renderContestCard = (contest: Contest, isCreator: boolean) => {
     const participantCount = contest.participants?.length || contest._count?.participants || 0
     const canStart = isCreator && contest.status === "draft"
-    const canJoin = contest.status === "waiting" || contest.status === "in_progress"
-    const isFinished = contest.status === "finished"
+    
+    // Check if contest has expired (end time passed)
+    const now = new Date()
+    const actualEndTime = contest.endDate ? new Date(contest.endDate) : null
+    const hasExpired = actualEndTime && actualEndTime < now
+    
+    const canJoin = !hasExpired && (contest.status === "waiting" || contest.status === "in_progress")
+    const isFinished = contest.status === "finished" || hasExpired
 
     return (
       <Card key={contest.id} className="hover:shadow-lg transition-shadow">

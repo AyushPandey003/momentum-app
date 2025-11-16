@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from "drizzle-orm/neon-serverless";
 import { schema } from "@/db/schema";
 
 config({ path: ".env" }); // or .env.local

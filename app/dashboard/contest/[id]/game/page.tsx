@@ -70,6 +70,16 @@ export default function ContestGamePage() {
   // WebSocket URL from environment or default (Go service on port 8080)
   const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8080";
 
+  // Handle redirect to leaderboard when game finishes
+  useEffect(() => {
+    if (gameState.status === "finished") {
+      const timer = setTimeout(() => {
+        router.push(`/dashboard/contest/${contestId}/leaderboard`);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.status, contestId, router]);
+
   const connectWebSocket = useCallback(async () => {
     if (!session?.user) {
       toast({
@@ -576,9 +586,17 @@ export default function ContestGamePage() {
                   ))}
                 </div>
 
-                <p className="text-center text-sm text-muted-foreground">
-                  Redirecting to leaderboard...
-                </p>
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Redirecting to leaderboard in 5 seconds...
+                  </p>
+                  <Button
+                    onClick={() => router.push(`/dashboard/contest/${contestId}/leaderboard`)}
+                    variant="outline"
+                  >
+                    View Leaderboard Now
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

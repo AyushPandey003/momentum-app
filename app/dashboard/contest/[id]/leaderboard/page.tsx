@@ -86,7 +86,7 @@ export default function ContestLeaderboardPage() {
         setLeaderboard((prev) => {
           const updated = prev.map((entry) =>
             entry.userId === payload.user_id
-              ? { ...entry, score: payload.score }
+              ? { ...entry, score: payload.score || 0 }
               : entry
           );
           // Re-sort by score
@@ -98,7 +98,7 @@ export default function ContestLeaderboardPage() {
         break;
 
       case "PLAYER_JOINED":
-        // Add new player to leaderboard
+        // Add new player to leaderboard or update player list
         if (payload.players) {
           const newLeaderboard = payload.players.map((p: any, index: number) => ({
             rank: index + 1,
@@ -116,12 +116,13 @@ export default function ContestLeaderboardPage() {
         break;
 
       case "GAME_OVER":
-        // Contest finished, load final results from DB
+        // Contest finished, load final results from DB to ensure accuracy
         setIsLiveMode(false);
         if (wsRef.current) {
           wsRef.current.close();
         }
-        setTimeout(() => loadLeaderboard(), 1000);
+        // Wait a bit for DB to save, then reload
+        setTimeout(() => loadLeaderboard(), 2000);
         break;
     }
   };
@@ -143,6 +144,37 @@ export default function ContestLeaderboardPage() {
     };
   }, [contest?.status, connectWebSocket, isLiveMode]);
 
+  // Check for new achievements when contest finishes
+  useEffect(() => {
+    if (contest?.status === "finished" && !loading) {
+      checkForNewAchievements();
+    }
+  }, [contest?.status, loading]);
+
+  const checkForNewAchievements = async () => {
+    try {
+      const response = await fetch("/api/check-achievements", {
+        method: "POST",
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.newAchievements && data.newAchievements.length > 0) {
+          data.newAchievements.forEach((achievement: any) => {
+            toast({
+              title: `🎉 Achievement Unlocked!`,
+              description: `${achievement.icon} ${achievement.title} - ${achievement.description} (+${achievement.points} points)`,
+              duration: 5000,
+            });
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error checking achievements:", error);
+    }
+  };
+
   const loadLeaderboard = async () => {
     try {
       const data = await getContestLeaderboard(contestId);
@@ -150,14 +182,24 @@ export default function ContestLeaderboardPage() {
         ...data.contest,
         shouldShowResults: data.contest.shouldShowResults || false
       });
-      setLeaderboard(data.leaderboard);
+      
+      // Ensure scores are not null/undefined
+      const sanitizedLeaderboard = data.leaderboard.map((entry: any) => ({
+        ...entry,
+        score: entry.score ?? 0,
+        timeSpentSeconds: entry.timeSpentSeconds ?? null,
+        correctSubmissions: entry.correctSubmissions ?? 0,
+        totalSubmissions: entry.totalSubmissions ?? 0
+      }));
+      
+      setLeaderboard(sanitizedLeaderboard);
       setLoading(false);
       setRefreshing(false);
     } catch (error) {
-      console.error(error);
+      console.error("Error loading leaderboard:", error);
       toast({
         title: "Error",
-        description: "Failed to load leaderboard",
+        description: "Failed to load leaderboard. The contest may still be processing results.",
         variant: "destructive",
       });
       setLoading(false);
