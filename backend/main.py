@@ -82,7 +82,11 @@ except Exception as e:
     study_tips_collection = None
 
 # Load questions from the JSON file
-with open('cleaned_output_grouped.json', 'r') as f:
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+json_path = os.path.join(script_dir, 'cleaned_output_grouped.json')
+
+with open(json_path, 'r') as f:
     question_data = json.load(f)
 
 class Question(BaseModel):
@@ -361,7 +365,7 @@ class TaskDecomposeResponse(BaseModel):
     message: str
 
 
-@app.post("/api/schedule/smart-lms", response_model=TaskScheduleResponse)
+@app.post("/schedule/smart-lms", response_model=TaskScheduleResponse)
 async def smart_lms_schedule(request: TaskScheduleRequest):
     """
     AI-powered smart scheduling for tasks based on:
@@ -510,7 +514,7 @@ Only return valid JSON, no additional text."""
         raise HTTPException(status_code=500, detail=f"Scheduling error: {str(e)}")
 
 
-@app.post("/api/tasks/ai-decompose", response_model=TaskDecomposeResponse)
+@app.post("/tasks/ai-decompose", response_model=TaskDecomposeResponse)
 async def ai_decompose_task(request: TaskDecomposeRequest):
     """
     AI-powered task decomposition using Gemini to break down complex tasks

@@ -21,11 +21,11 @@ export async function POST(req: NextRequest) {
     const { taskId, title, description, dueDate, estimatedTime, priority } = body;
 
     // Step 1: Call backend AI for smart scheduling
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000/py-api";
     
     let aiSchedule;
     try {
-      const scheduleResponse = await fetch(`${backendUrl}/api/schedule/smart-lms`, {
+      const scheduleResponse = await fetch(`${backendUrl}/schedule/smart-lms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

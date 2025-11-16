@@ -21,6 +21,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
+// Backend URL with py-api prefix for Python FastAPI endpoints
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000/py-api";
+
 interface QuizQuestion {
   q_id: string;
   question: string;
@@ -75,7 +78,7 @@ export function ChallengeYourself() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("http://localhost:8000/categories");
+        const response = await fetch(`${BACKEND_URL}/categories`);
         if (response.ok) {
           const data = await response.json();
           setCategories(data);
@@ -129,7 +132,7 @@ export function ChallengeYourself() {
     setResult(null);
     setSelectedAnswer(null);
     try {
-      const response = await fetch(`http://localhost:8000/quiz/random?category=${categoryToUse}`);
+      const response = await fetch(`${BACKEND_URL}/quiz/random?category=${categoryToUse}`);
       if (!response.ok) {
         throw new Error("Failed to fetch question.");
       }
@@ -137,7 +140,7 @@ export function ChallengeYourself() {
       setQuestion(data);
     } catch (error) {
       console.error(error);
-      alert("Failed to load question. Please make sure the backend server is running on http://localhost:8000");
+      alert("Failed to load question. Please make sure the backend server is running.");
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +157,7 @@ export function ChallengeYourself() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/quiz/check", {
+      const response = await fetch(`${BACKEND_URL}/quiz/check`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -192,7 +195,7 @@ export function ChallengeYourself() {
     if (!question) return;
 
     try {
-      await fetch("http://localhost:8000/quiz/skip", {
+      await fetch(`${BACKEND_URL}/quiz/skip`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

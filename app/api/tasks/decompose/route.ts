@@ -20,11 +20,11 @@ export async function POST(req: NextRequest) {
     const { taskId, title, description, estimatedTime } = body;
 
     // Call backend AI for task decomposition
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000/py-api";
     
     let subtasks;
     try {
-      const decomposeResponse = await fetch(`${backendUrl}/api/tasks/ai-decompose`, {
+      const decomposeResponse = await fetch(`${backendUrl}/tasks/ai-decompose`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
