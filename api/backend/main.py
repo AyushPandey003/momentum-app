@@ -5,9 +5,17 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
-import chromadb
-from chromadb.utils import embedding_functions
 import random
+
+# Optional heavy imports for vector DB (chromadb, sentence-transformers)
+try:
+    import chromadb
+    from chromadb.utils import embedding_functions
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    CHROMADB_AVAILABLE = False
+    chromadb = None
+    embedding_functions = None
 
 app = FastAPI()
 
@@ -34,53 +42,58 @@ if GEMINI_API_KEY:
 else:
     model = None
 
-# Initialize ChromaDB for vector storage
-chroma_client = chromadb.Client()
-sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="all-MiniLM-L6-v2"
-)
+# Initialize ChromaDB for vector storage (optional)
+chroma_client = None
+sentence_transformer_ef = None
+study_tips_collection = None
 
-# Create/Get collection for study tips and motivation
-try:
-    study_tips_collection = chroma_client.get_or_create_collection(
-        name="study_tips",
-        embedding_function=sentence_transformer_ef
-    )
-    
-    # Initialize with some default study tips if collection is empty
+if CHROMADB_AVAILABLE:
     try:
-        existing = study_tips_collection.get()
-        if not existing or not existing.get('documents'):
-            default_tips = [
-                "The 5-minute rule: Commit to working on a task for just 5 minutes. Often, starting is the hardest part, and you'll find yourself continuing.",
-                "Swiss Cheese Method: Poke small holes in large tasks by completing tiny portions. This makes overwhelming projects manageable.",
-                "Time-blocking: Dedicate specific time slots to specific tasks. Treat these blocks as non-negotiable appointments.",
-                "Energy management: Schedule your most challenging tasks during your peak energy hours. Save routine tasks for low-energy periods.",
-                "The 2-minute rule: If a task takes less than 2 minutes, do it immediately. This prevents small tasks from piling up.",
-                "Pomodoro Technique: Work in 25-minute focused sprints followed by 5-minute breaks. This prevents burnout and maintains focus.",
-                "Break down assignments: Transform 'Write 10-page paper' into smaller steps like 'Research 5 sources', 'Create outline', 'Draft introduction'.",
-                "Schedule self-care: Block time for exercise, hobbies, and social activities. Mental health is crucial for academic success.",
-                "Use implementation intentions: Instead of 'I'll study today', say 'I'll study biology at 3 PM in the library'. Specificity increases follow-through.",
-                "Overcome perfectionism: Done is better than perfect. Aim for progress, not perfection, to avoid paralysis.",
-                "Create accountability: Share your goals with friends or study groups. External accountability boosts commitment.",
-                "Celebrate small wins: Acknowledge every completed task, no matter how small. Positive reinforcement builds momentum.",
-                "Minimize decision fatigue: Plan your day the night before. Fewer decisions mean more mental energy for actual work.",
-                "Environmental design: Create a dedicated study space free from distractions. Your environment shapes your behavior.",
-                "Use the Eisenhower Matrix: Categorize tasks by urgency and importance. Focus on important but not urgent tasks to prevent crises."
-            ]
-            
-            for idx, tip in enumerate(default_tips):
-                study_tips_collection.add(
-                    documents=[tip],
-                    ids=[f"default_tip_{idx}"],
-                    metadatas=[{"category": "productivity", "source": "default"}]
-                )
-    except Exception as e:
-        print(f"Warning: Could not initialize default tips: {e}")
+        chroma_client = chromadb.Client()
+        sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="all-MiniLM-L6-v2"
+        )
+        study_tips_collection = chroma_client.get_or_create_collection(
+            name="study_tips",
+            embedding_function=sentence_transformer_ef
+        )
         
-except Exception as e:
-    print(f"Warning: ChromaDB not available: {e}")
-    study_tips_collection = None
+        # Initialize with some default study tips if collection is empty
+        try:
+            existing = study_tips_collection.get()
+            if not existing or not existing.get('documents'):
+                default_tips = [
+                    "The 5-minute rule: Commit to working on a task for just 5 minutes. Often, starting is the hardest part, and you'll find yourself continuing.",
+                    "Swiss Cheese Method: Poke small holes in large tasks by completing tiny portions. This makes overwhelming projects manageable.",
+                    "Time-blocking: Dedicate specific time slots to specific tasks. Treat these blocks as non-negotiable appointments.",
+                    "Energy management: Schedule your most challenging tasks during your peak energy hours. Save routine tasks for low-energy periods.",
+                    "The 2-minute rule: If a task takes less than 2 minutes, do it immediately. This prevents small tasks from piling up.",
+                    "Pomodoro Technique: Work in 25-minute focused sprints followed by 5-minute breaks. This prevents burnout and maintains focus.",
+                    "Break down assignments: Transform 'Write 10-page paper' into smaller steps like 'Research 5 sources', 'Create outline', 'Draft introduction'.",
+                    "Schedule self-care: Block time for exercise, hobbies, and social activities. Mental health is crucial for academic success.",
+                    "Use implementation intentions: Instead of 'I'll study today', say 'I'll study biology at 3 PM in the library'. Specificity increases follow-through.",
+                    "Overcome perfectionism: Done is better than perfect. Aim for progress, not perfection, to avoid paralysis.",
+                    "Create accountability: Share your goals with friends or study groups. External accountability boosts commitment.",
+                    "Celebrate small wins: Acknowledge every completed task, no matter how small. Positive reinforcement builds momentum.",
+                    "Minimize decision fatigue: Plan your day the night before. Fewer decisions mean more mental energy for actual work.",
+                    "Environmental design: Create a dedicated study space free from distractions. Your environment shapes your behavior.",
+                    "Use the Eisenhower Matrix: Categorize tasks by urgency and importance. Focus on important but not urgent tasks to prevent crises."
+                ]
+                
+                for idx, tip in enumerate(default_tips):
+                    study_tips_collection.add(
+                        documents=[tip],
+                        ids=[f"default_tip_{idx}"],
+                        metadatas=[{"category": "productivity", "source": "default"}]
+                    )
+        except Exception as e:
+            print(f"Warning: Could not initialize default tips: {e}")
+            
+    except Exception as e:
+        print(f"Warning: ChromaDB initialization failed: {e}")
+        study_tips_collection = None
+else:
+    print("Info: ChromaDB not installed (optional dependency). Vector-based tips will be unavailable.")
 
 # Load questions from the JSON file
 # Get the directory of the current script
