@@ -1,7 +1,6 @@
 {
   "functions": {
     "backend/**/*.py": {
-      "runtime": "python3.11",
       "excludeFiles": "{.next,.git,node_modules}/**"
     }
   }
