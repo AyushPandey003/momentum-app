@@ -5,6 +5,9 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -41,17 +44,24 @@ export async function GET(
       ),
     });
 
+    // If no participant record exists yet, check if user is the creator
+    const isCreator = contestData.createdBy === session.user.id;
+    
     if (!participant) {
-      return NextResponse.json(
-        { error: "Not a participant" },
-        { status: 403 }
-      );
+      // User is not yet a participant, but might be the creator
+      return NextResponse.json({
+        isOrganizer: isCreator,
+        creatorId: contestData.createdBy,
+        userId: session.user.id,
+        isParticipant: false
+      });
     }
 
     return NextResponse.json({
-      isOrganizer: participant.isOrganizer,
+      isOrganizer: participant.isOrganizer || isCreator,
       creatorId: contestData.createdBy,
       userId: session.user.id,
+      isParticipant: true
     });
   } catch (error) {
     console.error("Error fetching participant status:", error);

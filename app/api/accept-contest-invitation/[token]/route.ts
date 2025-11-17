@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ token: string }> }
@@ -142,9 +145,9 @@ export async function GET(
             })
             .where(eq(schema.contestInvitation.id, invitation.id));
 
-        // Redirect to contest lobby page
+        // Redirect directly to game page (lobby just redirects to game anyway)
         return NextResponse.redirect(
-            new URL(`/dashboard/contest/${invitation.contestId}/lobby`, request.url)
+            new URL(`/dashboard/contest/${invitation.contestId}/game`, request.url)
         );
     } catch (error) {
         console.error("Error accepting contest invitation:", error);

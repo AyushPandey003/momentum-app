@@ -171,9 +171,12 @@ export default function ContestGamePage() {
         const response = await fetch(`/api/contest/${contestId}/participant-status`);
         if (response.ok) {
           const data = await response.json();
+          console.log("Participant status:", data);
           // User is host if they are the organizer of the contest
           setIsHost(data.isOrganizer === true);
           setContestCreatorId(data.creatorId);
+        } else {
+          console.error("Failed to fetch participant status:", response.status);
         }
       } catch (error) {
         console.error("Error fetching participant status:", error);
