@@ -3,6 +3,10 @@
     {
       "source": "/backend/:path*",
       "destination": "/api/backend/index.py"
-    }
+    },
+	{
+		"source":"/api/:path*",
+		"destination":"/app/api/:path*"
+	}
   ]
 }
