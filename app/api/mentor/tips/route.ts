@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const count = searchParams.get("count") || "5";
     
     const response = await fetch(
-      `${backendUrl}/backend/mentor/tips?count=${count}`,
+      `${backendUrl}/mentor/tips?count=${count}`,
       {
         method: "GET",
         headers: {

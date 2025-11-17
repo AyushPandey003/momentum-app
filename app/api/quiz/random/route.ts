@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || "Cognitive";
     
     const response = await fetch(
-      `${backendUrl}/backend/quiz/random?category=${encodeURIComponent(category)}`,
+      `${backendUrl}/quiz/random?category=${encodeURIComponent(category)}`,
       {
         method: "GET",
         headers: {

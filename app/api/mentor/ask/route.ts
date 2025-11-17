@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
     const body = await request.json();
     
-    const response = await fetch(`${backendUrl}/backend/mentor/ask`, {
+    const response = await fetch(`${backendUrl}/mentor/ask`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
