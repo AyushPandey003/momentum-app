@@ -1,8 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // No custom rewrites needed — backend now lives under Next's `api/` routes.
+  // Add explicit mapping for auth routes so `/auth/*` and `/api/auth/*`
+  // hit the catch-all API file `app/api/auth/[...all]/route.ts`.
   rewrites: async () => {
     return [
+      // Ensure auth rewrite is first so it takes precedence over other rules
+      {
+        source: '/auth/:path*',
+        destination: '/api/auth/:path*',
+      },
       {
         source: "/backend/:path*",
         destination:
