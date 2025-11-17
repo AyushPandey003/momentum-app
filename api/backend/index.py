@@ -17,7 +17,7 @@ except ImportError:
     chromadb = None
     embedding_functions = None
 
-app = FastAPI(root_path="/api/backend")
+app = FastAPI()
 
 # CORS Middleware
 origins = [

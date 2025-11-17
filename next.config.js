@@ -15,13 +15,6 @@ const nextConfig = {
         source: '/auth/:path*',
         destination: '/api/auth/:path*',
       },
-      {
-        source: "/backend/:path*",
-        destination:
-          process.env.NODE_ENV === "development"
-            ? "http://127.0.0.1:8000/api/backend/:path*"
-            : "/api/backend/index.py",
-      },
     ];
   },
 };
