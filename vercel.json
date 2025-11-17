@@ -1,9 +1,18 @@
 {
   "version": 2,
+  "functions": {
+    "api/backend/index.py": {
+      "runtime": "python3.12"
+    }
+  },
   "rewrites": [
     {
+      "source": "/backend/:path*",
+      "destination": "/api/backend/index.py"
+    },
+    {
       "source": "/api/backend/:path*",
-      "destination": "/api/backend/index.py/:path*"
+      "destination": "/api/backend/index.py"
     }
   ]
 }
