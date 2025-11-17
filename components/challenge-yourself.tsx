@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog"
 
 // Backend URL — build origin-aware same-origin base for client-side calls
-const BACKEND_URL = (typeof window !== 'undefined' ? window.location.origin : '') + '/api';
+const BACKEND_URL = (typeof window !== 'undefined' ? window.location.origin : '') + '/backend';
 
 interface QuizQuestion {
   q_id: string;

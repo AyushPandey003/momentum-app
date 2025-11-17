@@ -17,7 +17,7 @@ except ImportError:
     chromadb = None
     embedding_functions = None
 
-app = FastAPI()
+app = FastAPI(root_path="/backend")
 
 # CORS Middleware
 origins = [
@@ -627,10 +627,6 @@ Keep it practical for students. Return valid JSON only, no extra text."""
             message="Generated fallback subtasks"
         )
 
-
-
-# Vercel serverless function handler
-app_handler = app
 
 if __name__ == "__main__":
 
