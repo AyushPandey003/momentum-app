@@ -1,8 +1,8 @@
 {
-	"rewrites": [
-		{
-			"source": "/backend/:path*",
-			"destination": "/backend/index.py"
-		}
-	]
+  "rewrites": [
+    {
+      "source": "/backend/:path*",
+      "destination": "/api/backend/index.py"
+    }
+  ]
 }
