@@ -3,10 +3,17 @@
     {
       "source": "/backend/:path*",
       "destination": "/api/backend/index.py"
-    },
-	{
-      "source": "/api/(.*)",
-      "destination": "/api"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/auth/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
     }
   ]
 }
