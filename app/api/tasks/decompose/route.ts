@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const { taskId, title, description, estimatedTime } = body;
 
     // Call backend AI for task decomposition
-    const backendUrl = process.env.BACKEND_URL ;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ;
     
     let subtasks;
     try {

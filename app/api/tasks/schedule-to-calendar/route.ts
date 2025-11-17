@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const { taskId, title, description, dueDate, estimatedTime, priority } = body;
 
     // Step 1: Call backend AI for smart scheduling
-    const backendUrl = process.env.BACKEND_URL;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     
     let aiSchedule;
     try {
