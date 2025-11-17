@@ -628,6 +628,9 @@ Keep it practical for students. Return valid JSON only, no extra text."""
         )
 
 
+# Vercel serverless function handler
+handler = app
+
 if __name__ == "__main__":
 
     import uvicorn
