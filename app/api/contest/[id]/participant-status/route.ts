@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db/drizzle";
+import { schema } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { id: contestId } = await params;
+
+    // Fetch the contest to get creator info
+    const contestData = await db.query.contest.findFirst({
+      where: eq(schema.contest.id, contestId),
+    });
+
+    if (!contestData) {
+      return NextResponse.json(
+        { error: "Contest not found" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch participant record to check if user is organizer
+    const participant = await db.query.contestParticipant.findFirst({
+      where: and(
+        eq(schema.contestParticipant.contestId, contestId),
+        eq(schema.contestParticipant.userId, session.user.id)
+      ),
+    });
+
+    if (!participant) {
+      return NextResponse.json(
+        { error: "Not a participant" },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.json({
+      isOrganizer: participant.isOrganizer,
+      creatorId: contestData.createdBy,
+      userId: session.user.id,
+    });
+  } catch (error) {
+    console.error("Error fetching participant status:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch participant status" },
+      { status: 500 }
+    );
+  }
+}

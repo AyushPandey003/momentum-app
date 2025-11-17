@@ -103,6 +103,9 @@ export async function GET(
         });
 
         if (!existingParticipant) {
+            // Check if user is the contest creator
+            const isCreator = invitation.contest.createdBy === user.id;
+            
             // Add user as participant
             await db.insert(schema.contestParticipant).values({
                 id: `cp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -114,10 +117,19 @@ export async function GET(
                 score: 0,
                 timeSpentSeconds: 0,
                 status: "invited",
-                isOrganizer: false,
+                isOrganizer: isCreator, // Set as organizer if they are the creator
                 currentQuestionIndex: 0,
                 answeredQuestions: []
             });
+        } else {
+            // If participant exists, ensure creator is marked as organizer
+            const isCreator = invitation.contest.createdBy === user.id;
+            if (isCreator && !existingParticipant.isOrganizer) {
+                await db
+                    .update(schema.contestParticipant)
+                    .set({ isOrganizer: true })
+                    .where(eq(schema.contestParticipant.id, existingParticipant.id));
+            }
         }
 
         // Update invitation status and link to user

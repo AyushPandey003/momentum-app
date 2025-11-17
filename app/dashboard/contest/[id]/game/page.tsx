@@ -164,26 +164,24 @@ export default function ContestGamePage() {
     }
   }, [contestId, session?.user, router, toast, WS_URL]);
 
-  // Fetch contest details to determine host
+  // Fetch contest participant details to determine if user is organizer/host
   useEffect(() => {
-    const fetchContestDetails = async () => {
+    const fetchParticipantStatus = async () => {
       try {
-        const response = await fetch(`/api/contest/${contestId}`);
+        const response = await fetch(`/api/contest/${contestId}/participant-status`);
         if (response.ok) {
-          const contest = await response.json();
-          setContestCreatorId(contest.createdBy);
-          // Check if current user is the creator
-          if (session?.user?.id === contest.createdBy) {
-            setIsHost(true);
-          }
+          const data = await response.json();
+          // User is host if they are the organizer of the contest
+          setIsHost(data.isOrganizer === true);
+          setContestCreatorId(data.creatorId);
         }
       } catch (error) {
-        console.error("Error fetching contest details:", error);
+        console.error("Error fetching participant status:", error);
       }
     };
 
     if (session?.user?.id) {
-      fetchContestDetails();
+      fetchParticipantStatus();
     }
   }, [contestId, session?.user?.id]);
 
