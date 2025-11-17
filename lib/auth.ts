@@ -7,13 +7,14 @@ import VerifyEmail from "@/components/emails/verify-email";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { lastLoginMethod } from "better-auth/plugins";
+import { lastLoginMethod, organization } from "better-auth/plugins";
 import { sendMail } from "./gmail";
 
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_AUTH_URL || "http://localhost:3000",
     trustedOrigins: [
-        process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_AUTH_URL || "http://localhost:3000"
+        process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_AUTH_URL || "http://localhost:3000",
+        "https://momentum003.vercel.app"
     ],
     emailVerification: {
         sendVerificationEmail: async ({ user, url }) => {
@@ -52,7 +53,7 @@ export const auth = betterAuth({
         provider: "pg",
         schema,
     }),
-    plugins: [lastLoginMethod(), nextCookies()]
+    plugins: [organization(), lastLoginMethod(), nextCookies()]
 });
 
 export type Session = typeof auth.$Infer.Session.session;
