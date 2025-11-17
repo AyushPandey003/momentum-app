@@ -1,13 +1,3 @@
 {
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/backend/:path*",
-      "destination": "/api/backend/index.py"
-    },
-    {
-      "source": "/api/backend/:path*",
-      "destination": "/api/backend/index.py"
-    }
-  ]
+  "version": 2
 }
