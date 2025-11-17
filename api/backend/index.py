@@ -634,3 +634,32 @@ if __name__ == "__main__":
 
     uvicorn.run(app)
 
+# When this module is deployed under a path like `/api/backend` (for example
+# when Next/Vercel rewrites `/backend/:path*` to `/api/backend/:path*`), the
+# FastAPI routes defined above (e.g. `@app.get("/categories")`) will not
+# match because the incoming scope path includes the prefix. To make the app
+# robust to both direct mounts and prefix-based mounts, wrap the FastAPI
+# instance with a small ASGI wrapper that strips the `/api/backend` prefix
+# before dispatching to the original FastAPI app. We overwrite the top-level
+# `app` variable with the wrapper after all routes are registered so the
+# decorated routes remain on the original FastAPI instance.
+
+# NOTE: keep this suffix in sync with any rewrites in `vercel.json`.
+_original_app = app
+_prefix = "/api/backend"
+
+async def _asgi_strip_prefix(scope, receive, send):
+    if scope.get("type") == "http":
+        path = scope.get("path", "") or ""
+        if path.startswith(_prefix):
+            # Create a shallow copy of the scope and adjust the path
+            new_scope = dict(scope)
+            new_path = path[len(_prefix):]
+            new_scope["path"] = new_path if new_path else "/"
+            await _original_app(new_scope, receive, send)
+            return
+    await _original_app(scope, receive, send)
+
+# Export the wrapper as `app` (ASGI callable) so hosting platforms find it.
+app = _asgi_strip_prefix
+

@@ -2,20 +2,15 @@
 const nextConfig = {
   // No custom rewrites needed — backend now lives under Next's `api/` routes.
   rewrites: async () => {
-    return [];
-  },
-  async headers() {
     return [
       {
-        source: "/api/auth/:path*",
-        headers: [
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: "*" },
-          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" },
-        ]
-      }
-    ]
-  }
+        source: "/api/backend/:path*",
+        destination:
+          process.env.NODE_ENV === "development"
+            ? "http://127.0.0.1:8000/api/backend/:path*"
+            : "/api/backend/",
+      },
+    ];
+  },
 };
 module.exports = nextConfig;

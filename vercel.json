@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/backend/:path*",
-      "destination": "/api/backend/:path*"
-    }
-  ]
-}
