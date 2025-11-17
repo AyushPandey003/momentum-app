@@ -5,8 +5,8 @@
       "destination": "/api/backend/index.py"
     },
 	{
-		"source":"/api/:path*",
-		"destination":"/app/api/:path*"
-	}
+      "source": "/api/(.*)",
+      "destination": "/api"
+    }
   ]
 }
