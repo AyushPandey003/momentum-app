@@ -6,14 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { MenuIcon, MountainIcon, LogOut } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
+import { signOut } from "@/lib/auth-utils"
 
 export function Navbar() {
   const router = useRouter()
   const { data: session } = authClient.useSession()
   
   const handleSignOut = async () => {
-    await authClient.signOut()
-    router.push("/login")
+    try {
+      await signOut()
+      router.push("/login")
+    } catch (error) {
+      console.error("Error signing out:", error)
+      // Still redirect even if signout had issues
+      router.push("/login")
+    }
   }
 
   return (

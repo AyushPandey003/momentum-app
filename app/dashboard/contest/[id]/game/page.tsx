@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { authClient } from "@/lib/auth-client";
+import { clearContestState } from "@/lib/cleanup-utils";
+import { validateAuthState } from "@/lib/auth-utils";
 
 interface Player {
   userId: string;
@@ -66,19 +68,39 @@ export default function ContestGamePage() {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const [contestCreatorId, setContestCreatorId] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null); // Cache token to avoid repeated API calls
+  const isConnectingRef = useRef(false); // Prevent multiple simultaneous connections
+  const latestStatusRef = useRef<GameState["status"]>("connecting");
 
   // WebSocket URL from environment or default (Go service on port 8080)
   const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
 
-  // Handle redirect to leaderboard when game finishes
+  // Validate session state on mount to prevent mismatches
+  useEffect(() => {
+    if (session?.user?.id) {
+      const isValid = validateAuthState(session.user.id);
+      if (!isValid) {
+        console.warn("Session state mismatch detected, state has been cleared");
+      }
+    }
+  }, [session?.user?.id]);
+
+  // Handle redirect to leaderboard when game finishes and cleanup
   useEffect(() => {
     if (gameState.status === "finished") {
+      // Clear contest state when game finishes
+      clearContestState();
+      
       const timer = setTimeout(() => {
         router.push(`/dashboard/contest/${contestId}/leaderboard`);
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [gameState.status, contestId, router]);
+
+  useEffect(() => {
+    latestStatusRef.current = gameState.status;
+  }, [gameState.status]);
 
   const connectWebSocket = useCallback(async () => {
     if (!session?.user) {
@@ -91,19 +113,39 @@ export default function ContestGamePage() {
       return;
     }
 
-    try {
-      // Get JWT token for WebSocket authentication
-      const response = await fetch("/api/contest/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contestId }),
-      });
+    // Prevent multiple simultaneous connection attempts
+    if (isConnectingRef.current || (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)) {
+      return;
+    }
 
-      if (!response.ok) {
-        throw new Error("Failed to get authentication token");
+    isConnectingRef.current = true;
+
+    try {
+      // Use cached token if available, otherwise fetch new one
+      let token = tokenRef.current;
+      
+      if (!token) {
+        // Get JWT token for WebSocket authentication
+        const response = await fetch("/api/contest/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contestId }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to get authentication token");
+        }
+
+        const data = await response.json();
+        token = data.token;
+        tokenRef.current = token; // Cache the token
       }
 
-      const { token } = await response.json();
+      // Close existing connection if any
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
 
       // Connect to WebSocket - Go service uses /ws/contests/{id} format
       const ws = new WebSocket(`${WS_URL}/ws/contests/${contestId}?token=${token}`);
@@ -113,6 +155,7 @@ export default function ContestGamePage() {
         console.log("WebSocket connected");
         setGameState((prev) => ({ ...prev, status: "waiting" }));
         reconnectAttempts.current = 0;
+        isConnectingRef.current = false;
       };
 
       ws.onmessage = (event) => {
@@ -120,19 +163,13 @@ export default function ContestGamePage() {
         handleWebSocketMessage(message);
       };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        toast({
-          title: "Connection Error",
-          description: "Failed to connect to game server",
-          variant: "destructive",
-        });
-      };
 
       ws.onclose = (event) => {
         console.log("WebSocket closed:", event.code, event.reason);
+        isConnectingRef.current = false;
         
-        if (event.code === 1000 || gameState.status === "finished") {
+        // Don't reconnect if it was a normal closure or game is finished
+        if (event.code === 1000 || latestStatusRef.current === "finished") {
           return;
         }
 
@@ -154,8 +191,15 @@ export default function ContestGamePage() {
           router.push(`/dashboard/contest/${contestId}/lobby`);
         }
       };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        isConnectingRef.current = false;
+        // Error handling is done in onclose
+      };
     } catch (error) {
       console.error("Error connecting to WebSocket:", error);
+      isConnectingRef.current = false;
       toast({
         title: "Connection Failed",
         description: "Could not connect to game server",
@@ -189,20 +233,30 @@ export default function ContestGamePage() {
   }, [contestId, session?.user?.id]);
 
   useEffect(() => {
-    if (!isPending && session?.user) {
-      connectWebSocket();
+    if (!isPending && session?.user && !isConnectingRef.current) {
+      // Only connect if not already connected
+      if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+        connectWebSocket();
+      }
     }
 
     return () => {
       if (wsRef.current) {
         wsRef.current.close(1000, "Component unmounted");
+        wsRef.current = null;
       }
       if (timerIntervalRef.current) {
         window.clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
       }
+      // Clear token cache on unmount
+      tokenRef.current = null;
+      // Clear contest state if leaving the game page
+      if (latestStatusRef.current !== "finished") {
+        clearContestState();
+      }
     };
-  }, [connectWebSocket, isPending, session?.user]);
+  }, [isPending, session?.user, connectWebSocket]);
 
   const handleWebSocketMessage = (message: any) => {
     const { type, payload } = message;

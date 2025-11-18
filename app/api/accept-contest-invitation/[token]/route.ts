@@ -45,11 +45,41 @@ export async function GET(
             );
         }
 
-        // Check if invitation is already accepted
+        // Check if invitation is already accepted - allow rejoin
+        // If already accepted, check if user is authenticated and redirect to game
         if (invitation.status === "accepted") {
-            return NextResponse.redirect(
-                new URL("/dashboard/leaderboard?success=already_joined", request.url)
-            );
+            const session = await auth.api.getSession({ headers: await headers() });
+            
+            // If user is authenticated and matches the invitation, allow rejoin
+            if (session?.user) {
+                const userEmail = session.user.email?.toLowerCase().trim();
+                const invitationEmail = invitation.email.toLowerCase().trim();
+                
+                // Check if user is already a participant or is the creator
+                const existingParticipant = await db.query.contestParticipant.findFirst({
+                    where: and(
+                        eq(schema.contestParticipant.contestId, invitation.contestId),
+                        eq(schema.contestParticipant.userId, session.user.id)
+                    )
+                });
+                
+                const isCreator = invitation.contest.createdBy === session.user.id;
+                
+                // If user matches invitation email or is creator or is already participant, allow rejoin
+                if (userEmail === invitationEmail || isCreator || existingParticipant) {
+                    // Redirect directly to game page for rejoin
+                    return NextResponse.redirect(
+                        new URL(`/dashboard/contest/${invitation.contestId}/game`, request.url)
+                    );
+                }
+            }
+            
+            // If not authenticated or doesn't match, redirect to login with token
+            const loginUrl = new URL("/login", request.url);
+            loginUrl.searchParams.set("email", invitation.email);
+            loginUrl.searchParams.set("contestToken", token);
+            loginUrl.searchParams.set("redirect", "contest");
+            return NextResponse.redirect(loginUrl);
         }
 
         // Check if invitation is declined

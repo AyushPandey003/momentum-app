@@ -145,7 +145,7 @@ export async function inviteToContest(data: {
         // Send email
         // Get base URL from environment, removing any trailing slash
         const baseUrl = (
-            process.env.NEXT_PUBLIC_APP_URL || 
+            process.env.NEXT_PUBLIC_AUTH_URL || 
             "http://localhost:3000"
         ).replace(/\/$/, '');
         

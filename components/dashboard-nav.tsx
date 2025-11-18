@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, Calendar, ListTodo, Trophy, Settings, LogOut, Menu, X, Sparkles, Timer, Brain, Swords, Users } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
+import { signOut } from "@/lib/auth-utils"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -30,8 +31,14 @@ export function DashboardNav() {
   const { data: session } = authClient.useSession()
 
   const handleSignOut = async () => {
-    await authClient.signOut()
-    router.push("/login")
+    try {
+      await signOut()
+      router.push("/login")
+    } catch (error) {
+      console.error("Error signing out:", error)
+      // Still redirect even if signout had issues
+      router.push("/login")
+    }
   }
 
   return (
