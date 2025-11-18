@@ -7,7 +7,7 @@
       "use": "@vercel/next"
     },
     {
-      "src": "backend/index.go",
+      "src": "backend/index.py",
       "use": "@vercel/python"
     }
   ],
