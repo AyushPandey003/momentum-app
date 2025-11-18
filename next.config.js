@@ -16,6 +16,7 @@ const nextConfig = {
         source: '/auth/:path*',
         destination: '/api/auth/:path*',
       },
+      {source: '/api/:path*', destination: '/api/:path*'},
       {
         // 1. The public URL you want to use in the frontend
         source: "/backend/:path*",
