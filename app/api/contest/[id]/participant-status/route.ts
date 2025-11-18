@@ -5,14 +5,16 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 export async function GET(
   request: NextRequest,
-  context: any
+  // FIX: Properly type the context argument for Next.js 15
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
+    // FIX: Await the params Promise
+    const params = await props.params;
+    const contestId = params.id;
+
     const session = await auth.api.getSession({ headers: await headers() });
     
     if (!session?.user) {
@@ -21,8 +23,6 @@ export async function GET(
         { status: 401 }
       );
     }
-
-    const { id: contestId } = await context.params;
 
     // Fetch the contest to get creator info
     const contestData = await db.query.contest.findFirst({

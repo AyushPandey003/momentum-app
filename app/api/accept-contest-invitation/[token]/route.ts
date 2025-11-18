@@ -5,14 +5,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 export async function GET(
     request: NextRequest,
-    context: any
+    // FIX: Strictly type the dynamic parameters as a Promise
+    props: { params: Promise<{ token: string }> }
 ) {
-    const params = await context.params;
+    // FIX: Await the params Promise before destructuring
+    const params = await props.params;
     const { token } = params;
 
     try {
