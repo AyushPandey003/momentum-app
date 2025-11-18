@@ -24,7 +24,7 @@ const nextConfig = {
         destination:
           process.env.NODE_ENV === "development"
             ? "http://127.0.0.1:8000/:path*" // DEV: Strip "/backend" so Python sees "/categories"
-            : "/api/index.py", // PROD: Point to the Vercel Function file
+            : "/backend/index.py", // PROD: Point to the Vercel Function file
       }
     ];
   },
