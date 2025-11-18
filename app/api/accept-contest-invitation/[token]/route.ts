@@ -10,11 +10,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
     request: NextRequest,
-    // FIX 1: params is now a Promise in Next.js 15
-    props: { params: Promise<{ token: string }> }
+    context: any
 ) {
-    // FIX 2: Await the params before using them
-    const params = await props.params;
+    const params = await context.params;
     const { token } = params;
 
     try {

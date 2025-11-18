@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: any
 ) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -22,7 +22,7 @@ export async function GET(
       );
     }
 
-    const { id: contestId } = await params;
+    const { id: contestId } = await context.params;
 
     // Fetch the contest to get creator info
     const contestData = await db.query.contest.findFirst({
