@@ -68,9 +68,7 @@ export async function createContest(data: {
         maxParticipants: data.maxParticipants || 5,
         isPrivate: data.isPrivate !== undefined ? data.isPrivate : true,
         waitingRoomActive: false,
-        metadata: selectedQuestionIds.length > 0 ? {
-            selectedQuestionIds
-        } : undefined,
+        metadata: {},
         createdAt: now,
         updatedAt: now
     }).returning();

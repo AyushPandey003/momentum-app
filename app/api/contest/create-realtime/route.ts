@@ -160,7 +160,6 @@ export async function POST(req: NextRequest) {
           showResultsAfter: endDate || existing.showResultsAfter,
           metadata: {
             ...(existing.metadata || {}),
-            selectedQuestionIds: validatedQuestionIds,
           },
           updatedAt: now
         })
@@ -187,12 +186,22 @@ export async function POST(req: NextRequest) {
       maxParticipants: 6, // WebSocket service default
       isPrivate: true,
       waitingRoomActive: false,
-      metadata: {
-        selectedQuestionIds: validatedQuestionIds,
-      },
+      metadata: {},
       createdAt: now,
       updatedAt: now
       }).returning();
+    }
+
+    // Now insert the questions into the junction table
+    if (validatedQuestionIds && validatedQuestionIds.length > 0) {
+      const contestQuestionsToInsert = validatedQuestionIds.map((pid: string, idx: number) => ({
+        id: `cq_${wsContestId}_${idx}`,
+        contestId: wsContestId,
+        problemSetId: pid,
+        orderIndex: idx
+      }));
+      
+      await db.insert(schema.contestQuestion).values(contestQuestionsToInsert);
     }
 
     // Automatically add creator as participant (organizer)
