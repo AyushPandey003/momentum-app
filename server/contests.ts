@@ -7,6 +7,7 @@ import { sendMail } from "@/lib/gmail";
 import ContestInvitationEmail from "@/components/emails/contest-invitation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { isContestAdminUser } from "@/lib/contest-admin";
 
 export async function createContest(data: {
     name: string;
@@ -19,6 +20,7 @@ export async function createContest(data: {
     questionCount?: number;
     durationMinutes?: number;
     tags?: string[];
+    selectedQuestionIds?: string[];
     maxParticipants?: number;
     isPrivate?: boolean;
 }) {
@@ -40,6 +42,14 @@ export async function createContest(data: {
     // showResultsAfter is when to reveal results (after contest ends)
     const showResultsAfter = new Date(endDate.getTime());
     
+    const selectedQuestionIds = Array.isArray(data.selectedQuestionIds)
+        ? Array.from(new Set(data.selectedQuestionIds.filter(Boolean)))
+        : [];
+
+    const resolvedQuestionCount = selectedQuestionIds.length > 0
+        ? selectedQuestionIds.length
+        : (data.questionCount || 10);
+
     const contest = await db.insert(schema.contest).values({
         id: contestId,
         name: data.name,
@@ -51,24 +61,44 @@ export async function createContest(data: {
         contestType: data.contestType || "standard",
         difficulty: data.difficulty || "medium",
         category: data.category,
-        questionCount: data.questionCount || 10,
+        questionCount: resolvedQuestionCount,
         durationMinutes: data.durationMinutes || 30,
         tags: data.tags || [],
         showResultsAfter,
         maxParticipants: data.maxParticipants || 5,
         isPrivate: data.isPrivate !== undefined ? data.isPrivate : true,
         waitingRoomActive: false,
+        metadata: selectedQuestionIds.length > 0 ? {
+            selectedQuestionIds
+        } : undefined,
         createdAt: now,
         updatedAt: now
     }).returning();
 
-    // Generate questions for the contest based on filters
-    await generateContestQuestions(contestId, {
-        difficulty: data.difficulty || "medium",
-        category: data.category,
-        tags: data.tags || [],
-        questionCount: data.questionCount || 10
-    });
+    if (selectedQuestionIds.length > 0) {
+        const selectedProblemSets = await db
+            .select({ id: schema.problemSet.id })
+            .from(schema.problemSet)
+            .where(
+                and(
+                    inArray(schema.problemSet.id, selectedQuestionIds),
+                    eq(schema.problemSet.isActive, true)
+                )
+            );
+
+        if (selectedProblemSets.length !== selectedQuestionIds.length) {
+            throw new Error("Some selected questions are invalid or inactive");
+        }
+
+        await insertContestQuestions(contestId, selectedProblemSets.map((item) => item.id));
+    } else {
+        await generateContestQuestions(contestId, {
+            difficulty: data.difficulty || "medium",
+            category: data.category,
+            tags: data.tags || [],
+            questionCount: data.questionCount || 10
+        });
+    }
 
     // Automatically add creator as participant (organizer) so they can join their own contest
     await db.insert(schema.contestParticipant).values({
@@ -427,6 +457,10 @@ export async function createProblemSet(data: {
         throw new Error("Unauthorized");
     }
 
+    if (!isContestAdminUser(session.user)) {
+        throw new Error("Forbidden: admin access required");
+    }
+
     const problemSetId = `ps_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const problemSet = await db.insert(schema.problemSet).values({
@@ -457,6 +491,16 @@ export async function getProblemSets(filters?: {
     tags?: string[];
     isActive?: boolean;
 }) {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session?.user) {
+        throw new Error("Unauthorized");
+    }
+
+    if (!isContestAdminUser(session.user)) {
+        throw new Error("Forbidden: admin access required");
+    }
+
     let conditions = [];
     
     if (filters?.difficulty) {
@@ -520,18 +564,22 @@ async function generateContestQuestions(
     const shuffled = filteredProblems.sort(() => 0.5 - Math.random());
     const selectedProblems = shuffled.slice(0, Math.min(filters.questionCount, shuffled.length));
 
-    // Insert contest questions
-    for (let i = 0; i < selectedProblems.length; i++) {
-        const questionId = `cq_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
-        await db.insert(schema.contestQuestion).values({
-            id: questionId,
-            contestId,
-            problemSetId: selectedProblems[i].id,
-            orderIndex: i
-        });
-    }
+    await insertContestQuestions(contestId, selectedProblems.map((problem) => problem.id));
 
     return selectedProblems.length;
+}
+
+async function insertContestQuestions(contestId: string, problemSetIds: string[]) {
+    if (problemSetIds.length === 0) return;
+
+    await db.insert(schema.contestQuestion).values(
+        problemSetIds.map((problemSetId, index) => ({
+            id: `cq_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+            contestId,
+            problemSetId,
+            orderIndex: index,
+        }))
+    );
 }
 
 // Note: Contest questions and answer submission are now handled by the WebSocket service
