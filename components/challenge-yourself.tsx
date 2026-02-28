@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import { motion, AnimatePresence } from "framer-motion"
-import { Sparkles, Trophy, Star, Zap, ChevronRight, SkipForward, Code2, ExternalLink, Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { Sparkles, Trophy, Star, Zap, ChevronRight, SkipForward, Code2, ExternalLink, Loader2, CheckCircle2, XCircle, Brain, Target, BarChart3 } from "lucide-react"
 import { checkLeetCodeSubmission, connectLeetCodeUsername, getLeetCodeUsername, disconnectLeetCode } from "@/server/leetcode"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -57,6 +59,7 @@ export function ChallengeYourself() {
   const [result, setResult] = useState<CheckAnswerResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [lastPointsEarned, setLastPointsEarned] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
@@ -73,6 +76,7 @@ export function ChallengeYourself() {
   const [availableTopics, setAvailableTopics] = useState<string[]>([]);
   
   const { toast } = useToast();
+  const accuracy = questionsAnswered > 0 ? Math.round((correctAnswers / questionsAnswered) * 100) : 0;
 
   // Fetch available categories on mount
   useEffect(() => {
@@ -140,7 +144,11 @@ export function ChallengeYourself() {
       setQuestion(data);
     } catch (error) {
       console.error(error);
-      alert("Failed to load question. Please make sure the backend server is running.");
+      toast({
+        title: "Unable to load question",
+        description: "Please try again in a few seconds.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -178,6 +186,7 @@ export function ChallengeYourself() {
       setQuestionsAnswered(prev => prev + 1);
       
       if (data.correct) {
+        setLastPointsEarned(data.points_earned || 0);
         setCorrectAnswers(prev => prev + 1);
         setTotalPoints(prev => prev + data.points_earned);
         setShowPointsAnimation(true);
@@ -185,7 +194,11 @@ export function ChallengeYourself() {
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to check answer. Please try again.");
+      toast({
+        title: "Could not submit answer",
+        description: "Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -320,6 +333,7 @@ export function ChallengeYourself() {
           leetcodeQuestion.difficulty === "Easy" ? 10 : 
           leetcodeQuestion.difficulty === "Medium" ? 20 : 30;
 
+        setLastPointsEarned(pointsEarned);
         setTotalPoints(prev => prev + pointsEarned);
         setQuestionsAnswered(prev => prev + 1);
         setCorrectAnswers(prev => prev + 1);
@@ -383,10 +397,10 @@ export function ChallengeYourself() {
             exit={{ opacity: 0, scale: 0.5, y: -50 }}
             className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
           >
-            <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white px-8 py-6 rounded-2xl shadow-2xl flex items-center gap-4">
+            <div className="bg-primary text-primary-foreground px-8 py-6 rounded-2xl shadow-2xl flex items-center gap-4">
               <Sparkles className="w-8 h-8 animate-spin" />
               <div className="text-center">
-                <div className="text-4xl font-bold">+10 Points!</div>
+                <div className="text-4xl font-bold">+{lastPointsEarned} Points!</div>
                 <div className="text-xl font-semibold flex items-center gap-2 justify-center mt-2">
                   <Trophy className="w-6 h-6" />
                   Awesome!
@@ -398,56 +412,74 @@ export function ChallengeYourself() {
         )}
       </AnimatePresence>
 
-      {/* Stats Bar */}
-      <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 w-full">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-            <div className="flex items-center gap-2 justify-center">
-              <Trophy className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-              <span className="font-semibold text-sm sm:text-base whitespace-nowrap">Total: {totalPoints}</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              <Zap className="w-5 h-5 text-blue-500 flex-shrink-0" />
-              <span className="font-semibold text-sm sm:text-base whitespace-nowrap">Questions: {questionsAnswered}</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              <Star className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="font-semibold text-sm sm:text-base whitespace-nowrap">Correct: {correctAnswers}</span>
-            </div>
-            {questionsAnswered > 0 && (
-              <div className="flex items-center gap-2 justify-center col-span-2 md:col-span-1">
-                <Badge variant="secondary" className="text-sm sm:text-base">
-                  Accuracy: {Math.round((correctAnswers / questionsAnswered) * 100)}%
-                </Badge>
+      {/* Stats */}
+      <Card className="w-full">
+        <CardContent className="pt-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground mb-1">Total Points</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold">{totalPoints}</p>
+                <Trophy className="w-4 h-4 text-muted-foreground" />
               </div>
-            )}
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground mb-1">Answered</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold">{questionsAnswered}</p>
+                <Zap className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground mb-1">Correct</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold">{correctAnswers}</p>
+                <Target className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground mb-1">Accuracy</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold">{accuracy}%</p>
+                <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Progress consistency</span>
+              <span>{questionsAnswered > 0 ? `${correctAnswers}/${questionsAnswered} correct` : "Start your first challenge"}</span>
+            </div>
+            <Progress value={accuracy} className="h-2" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Category Selection */}
+      {/* Challenge Controls */}
       <Card className="w-full">
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
             Choose Your Challenge Category
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Pick your mode and tune your challenge before starting.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Mode Toggle */}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Button
               onClick={switchToQuiz}
               variant={!isLeetCodeMode ? "default" : "outline"}
-              className="flex-1"
+              className="justify-start"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Brain className="w-4 h-4 mr-2" />
               Quiz Challenges
             </Button>
             <Button
               onClick={switchToLeetCode}
               variant={isLeetCodeMode ? "default" : "outline"}
-              className="flex-1"
+              className="justify-start"
             >
               <Code2 className="w-4 h-4 mr-2" />
               LeetCode Challenges
@@ -458,9 +490,9 @@ export function ChallengeYourself() {
           {isLeetCodeMode && (
             <div className="space-y-3">
               {connectedLeetcodeUsername ? (
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="flex items-center justify-between p-3 border bg-muted/30 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
                     <span className="font-medium">Connected: {connectedLeetcodeUsername}</span>
                   </div>
                   <Button
@@ -587,18 +619,28 @@ export function ChallengeYourself() {
           transition={{ duration: 0.3 }}
         >
           <Card className="border-2 w-full">
-            <CardHeader>
-              <CardTitle>Challenge Yourself!</CardTitle>
-              <Badge variant="outline" className="w-fit">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-xl">Current Challenge</CardTitle>
+                <Badge variant="outline" className="w-fit">
+                  {isLeetCodeMode ? "Code Mode" : "Quiz Mode"}
+                </Badge>
+              </div>
+              <Badge variant="secondary" className="w-fit">
                 {isLeetCodeMode ? `LeetCode - ${selectedDifficulty}` : selectedCategory}
               </Badge>
+              <p className="text-sm text-muted-foreground">
+                {isLeetCodeMode
+                  ? "Solve the problem on LeetCode, then verify your accepted submission here."
+                  : "Read carefully and choose the best option before submitting."}
+              </p>
             </CardHeader>
             <CardContent>
               {/* Loading State */}
               {isLoading && !question && !leetcodeQuestion && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <span className="ml-3">Loading question...</span>
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <span className="text-muted-foreground">Loading challenge...</span>
                 </div>
               )}
 
@@ -689,7 +731,10 @@ export function ChallengeYourself() {
               {/* Quiz Mode */}
               {!isLeetCodeMode && question && !result && (
                 <div className="space-y-6">
-                  <p className="text-lg font-semibold break-words">{question.question}</p>
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <p className="text-sm text-muted-foreground mb-2">Question</p>
+                    <p className="text-lg font-semibold break-words">{question.question}</p>
+                  </div>
                   <RadioGroup onValueChange={setSelectedAnswer} value={selectedAnswer || ""} className="space-y-2">
                     {question.options.map((option, idx) => (
                       <motion.div
@@ -697,10 +742,16 @@ export function ChallengeYourself() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.1 }}
-                        className="flex items-center space-x-2 p-3 rounded-lg hover:bg-accent transition-colors w-full"
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border transition-colors w-full",
+                          selectedAnswer === option ? "border-primary bg-primary/5" : "hover:bg-accent"
+                        )}
                       >
-                        <RadioGroupItem value={option} id={option} />
-                        <Label htmlFor={option} className="flex-1 cursor-pointer break-words">{option}</Label>
+                        <div className="h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center text-muted-foreground">
+                          {String.fromCharCode(65 + idx)}
+                        </div>
+                        <RadioGroupItem value={option} id={`${question.q_id}-${idx}`} />
+                        <Label htmlFor={`${question.q_id}-${idx}`} className="flex-1 cursor-pointer break-words">{option}</Label>
                       </motion.div>
                     ))}
                   </RadioGroup>
@@ -710,7 +761,7 @@ export function ChallengeYourself() {
                       disabled={!selectedAnswer || isLoading}
                       className="w-full sm:w-auto"
                     >
-                      {isLoading ? "Checking..." : "Submit Answer"}
+                      {isLoading ? "Checking..." : selectedAnswer ? "Submit Answer" : "Select an option"}
                       <ChevronRight className="w-4 h-4 ml-2" />
                     </Button>
                     <Button 
@@ -738,17 +789,18 @@ export function ChallengeYourself() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
           >
-            <Card className={result.correct ? "border-green-500 border-2 w-full" : "border-red-500 border-2 w-full"}>
+            <Card className={result.correct ? "border-primary border-2 w-full" : "border-destructive border-2 w-full"}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {result.correct ? (
                     <>
-                      <Trophy className="w-6 h-6 text-green-500" />
-                      <span className="text-green-500">Correct! 🎉</span>
+                      <Trophy className="w-6 h-6 text-primary" />
+                      <span className="text-primary">Correct! 🎉</span>
                     </>
                   ) : (
                     <>
-                      <span className="text-red-500">Not quite right</span>
+                      <XCircle className="w-6 h-6 text-destructive" />
+                      <span className="text-destructive">Not quite right</span>
                     </>
                   )}
                 </CardTitle>
@@ -767,7 +819,7 @@ export function ChallengeYourself() {
                   </motion.div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-red-600 font-semibold">Correct answer: {result.actual_answer}</p>
+                    <p className="font-semibold">Correct answer: {result.actual_answer}</p>
                     <p className="text-muted-foreground bg-muted p-3 rounded-lg">{result.answer_explanation}</p>
                   </div>
                 )}

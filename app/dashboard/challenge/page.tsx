@@ -12,11 +12,12 @@ export default function ChallengePage() {
       <DashboardNav />
       <main className="">
         <div className="container max-w-[1920px] py-8 px-4 sm:px-6 lg:px-8 xl:px-12">
-          <div className="space-y-6 w-full max-w-4xl mx-auto">
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-4">Challenge Yourself</h1>
-              <p className="text-muted-foreground mb-6 text-base sm:text-lg">
-                Test your knowledge across various categories and earn points to level up!
+          <div className="space-y-6 w-full max-w-5xl mx-auto">
+            <div className="rounded-xl border bg-card/60 p-5 sm:p-6">
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Daily Practice Arena</p>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-3">Challenge Yourself</h1>
+              <p className="text-muted-foreground text-sm sm:text-base lg:text-lg max-w-3xl">
+                Switch between quiz and LeetCode challenges, track your accuracy, and keep building momentum with every solved problem.
               </p>
             </div>
 

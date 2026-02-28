@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { db } from "@/db/drizzle";
 import { schema } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import { isContestAdminUser } from "@/lib/contest-admin";
 
 /**
  * API Route: Create Contest via Go WebSocket Service
@@ -32,11 +33,55 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { difficulty, questionCount, contestName, description, durationMinutes, emails, startDate } = body;
+    const { difficulty, questionCount, contestName, description, durationMinutes, emails, startDate, selectedQuestionIds } = body;
 
     if (!difficulty || !questionCount) {
       return NextResponse.json(
         { error: "difficulty and questionCount are required" },
+        { status: 400 }
+      );
+    }
+
+    const isAdmin = isContestAdminUser(session.user);
+    const selectedIds = Array.isArray(selectedQuestionIds)
+      ? selectedQuestionIds.filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0)
+      : [];
+
+    if (selectedIds.length > 0 && !isAdmin) {
+      return NextResponse.json(
+        { error: "Only admins can create contests from a curated question pool." },
+        { status: 403 }
+      );
+    }
+
+    let validatedQuestionIds: string[] = [];
+    if (selectedIds.length > 0) {
+      const uniqueSelectedIds = Array.from(new Set(selectedIds));
+      const selectedQuestions = await db
+        .select({ id: schema.problemSet.id })
+        .from(schema.problemSet)
+        .where(
+          and(
+            inArray(schema.problemSet.id, uniqueSelectedIds),
+            eq(schema.problemSet.isActive, true)
+          )
+        );
+
+      validatedQuestionIds = selectedQuestions.map((item) => item.id);
+
+      if (validatedQuestionIds.length !== uniqueSelectedIds.length) {
+        return NextResponse.json(
+          { error: "Some selected questions are invalid or inactive. Please refresh the pool and try again." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const resolvedQuestionCount = validatedQuestionIds.length > 0 ? validatedQuestionIds.length : Number(questionCount);
+
+    if (!Number.isFinite(resolvedQuestionCount) || resolvedQuestionCount < 1) {
+      return NextResponse.json(
+        { error: "Question count must be at least 1" },
         { status: 400 }
       );
     }
@@ -70,8 +115,9 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         name: contestName || `${session.user.name || 'User'}'s ${difficulty} Contest`,
         difficulty,
-        question_count: questionCount,
+        question_count: resolvedQuestionCount,
         duration_minutes: durationMinutes || 30, // Pass duration to Go service
+        selected_question_ids: validatedQuestionIds,
       }),
     });
 
@@ -109,8 +155,12 @@ export async function POST(req: NextRequest) {
           description: description !== undefined ? (description || null) : existing.description,
           startDate: start || existing.startDate,
           endDate: endDate || existing.endDate,
+          questionCount: resolvedQuestionCount,
           durationMinutes: durationMinutes || existing.durationMinutes,
           showResultsAfter: endDate || existing.showResultsAfter,
+          metadata: {
+            ...(existing.metadata || {}),
+          },
           updatedAt: now
         })
         .where(eq(schema.contest.id, wsContestId))
@@ -129,16 +179,29 @@ export async function POST(req: NextRequest) {
       contestType: "quick_fire", // All WebSocket contests are real-time
       difficulty: difficulty,
       category: null,
-      questionCount: questionCount,
+      questionCount: resolvedQuestionCount,
       durationMinutes: durationMinutes || 30,
       tags: [],
       showResultsAfter: endDate,
       maxParticipants: 6, // WebSocket service default
       isPrivate: true,
       waitingRoomActive: false,
+      metadata: {},
       createdAt: now,
       updatedAt: now
       }).returning();
+    }
+
+    // Now insert the questions into the junction table
+    if (validatedQuestionIds && validatedQuestionIds.length > 0) {
+      const contestQuestionsToInsert = validatedQuestionIds.map((pid: string, idx: number) => ({
+        id: `cq_${wsContestId}_${idx}`,
+        contestId: wsContestId,
+        problemSetId: pid,
+        orderIndex: idx
+      }));
+      
+      await db.insert(schema.contestQuestion).values(contestQuestionsToInsert);
     }
 
     // Automatically add creator as participant (organizer)
@@ -156,6 +219,18 @@ export async function POST(req: NextRequest) {
       currentQuestionIndex: 0,
       answeredQuestions: []
     });
+
+    if (validatedQuestionIds.length > 0) {
+      await db.delete(schema.contestQuestion).where(eq(schema.contestQuestion.contestId, wsContestId));
+      await db.insert(schema.contestQuestion).values(
+        validatedQuestionIds.map((problemSetId, orderIndex) => ({
+          id: `cq_${Date.now()}_${orderIndex}_${Math.random().toString(36).substr(2, 9)}`,
+          contestId: wsContestId,
+          problemSetId,
+          orderIndex,
+        }))
+      );
+    }
 
     // Send email invitations if emails provided
     let invitationsSent = 0;
@@ -188,6 +263,7 @@ export async function POST(req: NextRequest) {
       contestId: wsContestId,
       difficulty: contestData.difficulty,
       questionCount: contestData.question_count,
+      selectedQuestionCount: validatedQuestionIds.length,
       websocketUrl: contestData.websocket_url,
       message: contestData.message,
       invitationsSent,
