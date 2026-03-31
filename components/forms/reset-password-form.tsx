@@ -80,10 +80,10 @@ export function ResetPasswordForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Reset Password</CardTitle>
-          <CardDescription>Enter your new password</CardDescription>
+      <Card className="auth-enter auth-delay-2 border-border/50">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-2xl font-semibold">Reset Password</CardTitle>
+          <CardDescription className="text-sm">Create a strong new password for your account.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

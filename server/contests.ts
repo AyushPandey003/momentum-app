@@ -757,6 +757,86 @@ export async function getContestLeaderboard(contestId: string) {
 
 // Note: Participant score updates are handled by the WebSocket service
 
+// Remove a completed contest from current user's history.
+// - If current user is creator, this performs full contest deletion.
+// - If current user is a participant, only their own contest history rows are removed.
+export async function removeCompletedContestForUser(contestId: string) {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session?.user) {
+        throw new Error("Unauthorized");
+    }
+
+    const contest = await db.query.contest.findFirst({
+        where: eq(schema.contest.id, contestId)
+    });
+
+    if (!contest) {
+        throw new Error("Contest not found");
+    }
+
+    const now = new Date();
+    const endTime = contest.actualEndTime || contest.endDate;
+    const isCompleted = contest.status === "finished" || (endTime ? new Date(endTime).getTime() < now.getTime() : false);
+
+    if (!isCompleted) {
+        throw new Error("Only completed contests can be removed");
+    }
+
+    if (contest.createdBy === session.user.id) {
+        return deleteContest(contestId);
+    }
+
+    const participant = await db.query.contestParticipant.findFirst({
+        where: and(
+            eq(schema.contestParticipant.contestId, contestId),
+            eq(schema.contestParticipant.userId, session.user.id)
+        )
+    });
+
+    if (!participant) {
+        throw new Error("You are not a participant of this contest");
+    }
+
+    await db
+        .delete(schema.playerAnswer)
+        .where(
+            and(
+                eq(schema.playerAnswer.contestId, contestId),
+                eq(schema.playerAnswer.userId, session.user.id)
+            )
+        );
+
+    await db
+        .delete(schema.contestSubmission)
+        .where(
+            and(
+                eq(schema.contestSubmission.contestId, contestId),
+                eq(schema.contestSubmission.userId, session.user.id)
+            )
+        );
+
+    await db
+        .delete(schema.contestResult)
+        .where(
+            and(
+                eq(schema.contestResult.contestId, contestId),
+                eq(schema.contestResult.userId, session.user.id)
+            )
+        );
+
+    await db
+        .delete(schema.contestParticipant)
+        .where(
+            and(
+                eq(schema.contestParticipant.contestId, contestId),
+                eq(schema.contestParticipant.userId, session.user.id)
+            )
+        );
+
+    return { success: true, removed: "history" as const };
+}
+
 // Delete a contest (only creator can delete)
 export async function deleteContest(contestId: string) {
     const session = await auth.api.getSession({ headers: await headers() });

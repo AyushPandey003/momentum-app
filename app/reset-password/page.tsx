@@ -1,29 +1,16 @@
-import Link from "next/link";
-
 import { ResetPasswordForm } from "@/components/forms/reset-password-form";
-import Image from "next/image";
+import { AuthPageShell } from "@/components/forms/auth-page-shell";
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <Link
-          href="/"
-          className="flex items-center gap-2 self-center font-medium"
-        >
-          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-            <Image
-              width={50}
-              height={50}
-              src={"/better-auth-starter.png"}
-              alt="Better Auth Starter Logo"
-              priority
-            />
-          </div>
-          Better Auth Starter
-        </Link>
+    <AuthPageShell
+      title="Create A New Password"
+      subtitle="Set a fresh password for your account and jump right back into building momentum."
+      helperText="For security, avoid reusing older passwords."
+    >
+      <div className="w-full max-w-md">
         <ResetPasswordForm />
       </div>
-    </div>
+    </AuthPageShell>
   );
 }

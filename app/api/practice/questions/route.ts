@@ -4,7 +4,6 @@ import { headers } from "next/headers";
 import { db } from "@/db/drizzle";
 import { schema } from "@/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { isContestAdminUser } from "@/lib/contest-admin";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,70 +13,67 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Read access is allowed for authenticated users so question selection works
-    // even if local admin env variables are not configured.
-    const isAdmin = isContestAdminUser(session.user);
-
     const params = req.nextUrl.searchParams;
-    const search = params.get("search")?.trim();
     const difficulty = params.get("difficulty")?.trim();
     const category = params.get("category")?.trim();
-    const limit = Math.min(Number(params.get("limit") || 80), 200);
+    const limit = Math.min(Number(params.get("limit") || 20), 50);
 
     const conditions = [eq(schema.problemSet.isActive, true)];
 
     if (difficulty && ["easy", "medium", "hard"].includes(difficulty)) {
-      conditions.push(eq(schema.problemSet.difficulty, difficulty as "easy" | "medium" | "hard"));
+      conditions.push(
+        eq(schema.problemSet.difficulty, difficulty as "easy" | "medium" | "hard")
+      );
     }
 
     if (category && category !== "all") {
       conditions.push(eq(schema.problemSet.category, category));
     }
 
-    if (search) {
-      conditions.push(
-        sql`(
-          ${schema.problemSet.questionText} ILIKE ${`%${search}%`}
-          OR ${schema.problemSet.category} ILIKE ${`%${search}%`}
-          OR EXISTS (
-            SELECT 1
-            FROM jsonb_array_elements_text(${schema.problemSet.tags}) AS tag
-            WHERE tag ILIKE ${`%${search}%`}
-          )
-        )`
-      );
-    }
-
-    const [questions, categoryRows] = await Promise.all([
+    const [questions, categoryRows, countRows] = await Promise.all([
       db
         .select({
           id: schema.problemSet.id,
           questionText: schema.problemSet.questionText,
+          options: schema.problemSet.options,
+          correctAnswer: schema.problemSet.correctAnswer,
+          explanation: schema.problemSet.explanation,
           difficulty: schema.problemSet.difficulty,
           category: schema.problemSet.category,
           tags: schema.problemSet.tags,
           points: schema.problemSet.points,
           timeAllocationSeconds: schema.problemSet.timeAllocationSeconds,
-          createdAt: schema.problemSet.createdAt,
         })
         .from(schema.problemSet)
         .where(and(...conditions))
-        .orderBy(desc(schema.problemSet.createdAt))
+        .orderBy(sql`RANDOM()`)
         .limit(limit),
       db
         .selectDistinct({ category: schema.problemSet.category })
         .from(schema.problemSet)
         .where(eq(schema.problemSet.isActive, true))
         .orderBy(schema.problemSet.category),
+      db
+        .select({
+          difficulty: schema.problemSet.difficulty,
+          category: schema.problemSet.category,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(schema.problemSet)
+        .where(eq(schema.problemSet.isActive, true))
+        .groupBy(schema.problemSet.difficulty, schema.problemSet.category),
     ]);
 
     return NextResponse.json({
       questions,
       categories: categoryRows.map((row) => row.category).filter(Boolean),
-      isAdmin,
+      counts: countRows,
     });
   } catch (error) {
-    console.error("Error loading question pool:", error);
-    return NextResponse.json({ error: "Failed to load question pool" }, { status: 500 });
+    console.error("Error loading practice questions:", error);
+    return NextResponse.json(
+      { error: "Failed to load questions" },
+      { status: 500 }
+    );
   }
 }

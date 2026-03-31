@@ -1,14 +1,24 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Manrope, Plus_Jakarta_Sans } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { Navbar } from "@/components/navbar"
+import { ThemeProvider } from "@/components/theme-provider"
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin"
 import { extractRouterConfig } from "uploadthing/server"
 import { ourFileRouter } from "@/app/api/uploadthing/core"
 import "./globals.css"
+
+const bodyFont = Manrope({
+  subsets: ["latin"],
+  variable: "--font-body-family",
+})
+
+const displayFont = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-display-family",
+})
 
 export const metadata: Metadata = {
   title: "Momentum - AI Time Management Coach",
@@ -22,14 +32,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
-        <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
-        <Navbar />
-        <main className="flex-1">
-          <Suspense fallback={null}>{children}</Suspense>
-        </main>
-        <Analytics />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${bodyFont.variable} ${displayFont.variable} font-sans antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+          <Navbar />
+          <main className="flex-1">
+            <Suspense fallback={null}>{children}</Suspense>
+          </main>
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )

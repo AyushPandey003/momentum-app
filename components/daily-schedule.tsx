@@ -77,11 +77,11 @@ export function DailySchedule() {
   }
 
   return (
-    <Card>
+    <Card className="surface-glass border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-transparent">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Today's Schedule</CardTitle>
-          <Button onClick={handleGenerateSchedule} disabled={isGenerating || tasks.length === 0} size="sm">
+          <CardTitle className="text-amber-600 dark:text-amber-400">Today's Schedule</CardTitle>
+          <Button onClick={handleGenerateSchedule} disabled={isGenerating || tasks.length === 0} size="sm" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0">
             <Sparkles className="w-4 h-4 mr-2" />
             {isGenerating ? "Generating..." : "Auto-Schedule"}
           </Button>

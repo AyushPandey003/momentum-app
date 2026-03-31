@@ -112,10 +112,10 @@ export function PomodoroTimer() {
   const progress = ((totalTime - timeLeft) / totalTime) * 100
 
   return (
-    <Card className={cn(mode === "work" ? "border-primary" : "border-accent")}>
+    <Card className={cn("surface-glass", mode === "work" ? "border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent" : "border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent")}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>{mode === "work" ? "Focus Time" : mode === "break" ? "Short Break" : "Long Break"}</span>
+          <span className={cn(mode === "work" ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400")}>{mode === "work" ? "Focus Time" : mode === "break" ? "Short Break" : "Long Break"}</span>
           <div className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
             <Coffee className="w-4 h-4" />
             {pomodorosCompleted} completed
@@ -124,7 +124,7 @@ export function PomodoroTimer() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="text-center">
-          <div className="text-6xl font-bold font-mono tabular-nums">
+          <div className={cn("text-6xl font-bold font-mono tabular-nums", mode === "work" ? "text-red-500" : "text-green-500")}>
             {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
           </div>
         </div>
@@ -132,7 +132,7 @@ export function PomodoroTimer() {
         <Progress value={progress} className="h-2" />
 
         <div className="flex gap-2 justify-center">
-          <Button onClick={toggleTimer} size="lg" className="w-32">
+          <Button onClick={toggleTimer} size="lg" className={cn("w-32", mode === "work" ? "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600" : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600")} style={{color: 'white', borderColor: 'transparent'}}>
             {isRunning ? (
               <>
                 <Pause className="w-4 h-4 mr-2" />
@@ -146,7 +146,7 @@ export function PomodoroTimer() {
             )}
           </Button>
 
-          <Button onClick={resetTimer} variant="outline" size="lg">
+          <Button onClick={resetTimer} variant="outline" size="lg" className="hover:bg-muted-foreground/10">
             <RotateCcw className="w-4 h-4" />
           </Button>
 

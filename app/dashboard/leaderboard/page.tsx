@@ -194,12 +194,14 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Leaderboard & Achievements</h1>
-          <p className="text-muted-foreground">Compete with others and unlock achievements</p>
+      <div className="animate-in fade-in slide-in-from-top-2 duration-500 fill-mode-both">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 bg-clip-text text-transparent">Leaderboard & Achievements</h1>
+            <p className="text-sm text-muted-foreground">Compete, climb ranks, and unlock exclusive achievements</p>
         </div>
         <CreateContestDialog userContestCount={userContests.length} />
+        </div>
       </div>
 
       <LevelProgress />
