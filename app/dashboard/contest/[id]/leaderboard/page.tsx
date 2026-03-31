@@ -45,13 +45,30 @@ export default function ContestLeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+
+  const getWebSocketBaseUrl = useCallback(() => {
+    if (WS_URL) return WS_URL;
+    if (typeof window !== "undefined") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.host}`;
+    }
+    return "";
+  }, [WS_URL]);
 
   const connectWebSocket = useCallback(() => {
     if (!contestId || contest?.status !== "in_progress") return;
 
-    const ws = new WebSocket(`${WS_URL}/ws/contests/${contestId}`);
+    const wsBase = getWebSocketBaseUrl();
+    if (!wsBase) {
+      setIsLiveMode(false);
+      return;
+    }
+
+    const ws = new WebSocket(`${wsBase}/ws/contests/${contestId}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -75,7 +92,7 @@ export default function ContestLeaderboardPage() {
       // Load final results from DB after WebSocket closes
       loadLeaderboard();
     };
-  }, [contestId, contest?.status]);
+  }, [contestId, contest?.status, getWebSocketBaseUrl]);
 
   const handleWebSocketMessage = (message: any) => {
     const { type, payload } = message;
@@ -144,6 +161,16 @@ export default function ContestLeaderboardPage() {
     };
   }, [contest?.status, connectWebSocket, isLiveMode]);
 
+  useEffect(() => {
+    if (!contest || contest.status !== "in_progress" || isLiveMode) return;
+
+    const pollId = window.setInterval(() => {
+      loadLeaderboard();
+    }, 15000);
+
+    return () => window.clearInterval(pollId);
+  }, [contest, isLiveMode]);
+
   // Check for new achievements when contest finishes
   useEffect(() => {
     if (contest?.status === "finished" && !loading) {
@@ -177,6 +204,7 @@ export default function ContestLeaderboardPage() {
 
   const loadLeaderboard = async () => {
     try {
+      setLoadError(null);
       const data = await getContestLeaderboard(contestId);
       setContest({
         ...data.contest,
@@ -193,10 +221,12 @@ export default function ContestLeaderboardPage() {
       }));
       
       setLeaderboard(sanitizedLeaderboard);
+      setLastUpdatedAt(new Date());
       setLoading(false);
       setRefreshing(false);
     } catch (error) {
       console.error("Error loading leaderboard:", error);
+      setLoadError("Failed to load leaderboard. The contest may still be processing results.");
       toast({
         title: "Error",
         description: "Failed to load leaderboard. The contest may still be processing results.",
@@ -290,6 +320,17 @@ export default function ContestLeaderboardPage() {
           </Button>
         </div>
 
+        {loadError && (
+          <Card className="mb-6 border-destructive/30 bg-destructive/5">
+            <CardContent className="p-4 flex items-center justify-between gap-3">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -316,6 +357,16 @@ export default function ContestLeaderboardPage() {
             {isLiveMode && (
               <Badge variant="outline" className="text-green-600">
                 Real-time Updates
+              </Badge>
+            )}
+            {!isLiveMode && contest.status === "in_progress" && (
+              <Badge variant="outline">
+                Auto refresh every 15s
+              </Badge>
+            )}
+            {lastUpdatedAt && (
+              <Badge variant="outline">
+                Updated {lastUpdatedAt.toLocaleTimeString()}
               </Badge>
             )}
           </div>
@@ -357,6 +408,8 @@ export default function ContestLeaderboardPage() {
                       entry.rank <= 3
                         ? "bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-900/10 border-yellow-200"
                         : "hover:bg-accent"
+                    } ${
+                      entry.userId === currentUser?.id ? "ring-2 ring-primary/40" : ""
                     }`}
                   >
                     {/* Rank */}

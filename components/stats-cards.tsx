@@ -31,46 +31,54 @@ export function StatsCards() {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <Card className="rounded-[1.75rem]">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
+            <Target className="h-4 w-4 text-primary" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.tasksCompleted}</div>
+          <div className="text-3xl font-bold">{stats.tasksCompleted}</div>
           <p className="text-xs text-muted-foreground">Keep up the momentum!</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[1.75rem]">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Total Points</CardTitle>
-          <Trophy className="h-4 w-4 text-muted-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/40">
+            <Trophy className="h-4 w-4 text-secondary-foreground" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalPoints}</div>
+          <div className="text-3xl font-bold">{stats.totalPoints}</div>
           <p className="text-xs text-muted-foreground">Earn more by completing tasks</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[1.75rem]">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-          <Flame className="h-4 w-4 text-muted-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
+            <Flame className="h-4 w-4 text-primary" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.streak} days</div>
+          <div className="text-3xl font-bold">{stats.streak} days</div>
           <p className="text-xs text-muted-foreground">Don't break the chain!</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[1.75rem]">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Focus Time</CardTitle>
-          <Clock className="h-4 w-4 text-muted-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
+            <Clock className="h-4 w-4 text-primary" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
+          <div className="text-3xl font-bold">
             {Math.floor(stats.focusTime / 60)}h {stats.focusTime % 60}m
           </div>
           <p className="text-xs text-muted-foreground">Time well spent</p>

@@ -253,9 +253,10 @@ export function TaskList() {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground">Loading tasks...</p>
+      <Card className="surface-glass border-teal-500/20">
+        <CardContent className="flex flex-col items-center justify-center py-12 gap-3">
+          <Clock className="h-8 w-8 animate-spin text-teal-500" />
+          <p className="text-muted-foreground">Loading your tasks...</p>
         </CardContent>
       </Card>
     )
@@ -263,9 +264,10 @@ export function TaskList() {
 
   if (tasks.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground mb-4">No tasks yet. Create your first task to get started!</p>
+      <Card className="surface-glass border-teal-500/20 bg-gradient-to-br from-teal-500/5 to-cyan-500/5">
+        <CardContent className="flex flex-col items-center justify-center py-12 gap-3">
+          <Clock className="h-12 w-12 text-teal-500/40" />
+          <p className="text-muted-foreground font-medium">No tasks yet. Create your first task to get started!</p>
         </CardContent>
       </Card>
     )
@@ -289,18 +291,20 @@ export function TaskList() {
           onComplete={handleCompleteWithImage}
         />
       )}
-      {sortedTasks.map((task) => {
+      {sortedTasks.map((task, idx) => {
         const isExpanded = expandedTasks.has(task.id)
         const hasSubtasks = task.subtasks.length > 0
         const completedSubtasks = task.subtasks.filter((st) => st.completed).length
         return (
-          <Card key={task.id} className={cn(task.status === "completed" && "opacity-60")}>
+          <div key={task.id} className={cn("animate-in fade-in slide-in-from-bottom-2 duration-500", {"opacity-60 delay-75": task.status === "completed"})}
+            style={{ animationDelay: `${idx * 50}ms` }}>
+            <Card className={cn("surface-glass border-teal-500/20 hover:border-teal-500/40 transition-all duration-300", task.status === "completed" && "bg-muted/40")}>
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
                 <Checkbox
                   checked={task.status === "completed"}
                   onCheckedChange={() => handleToggleComplete(task)}
-                  className="mt-1"
+                  className="mt-1 cursor-pointer hover:bg-teal-500/20"
                 />
 
                 <div className="flex-1 min-w-0">
@@ -392,6 +396,7 @@ export function TaskList() {
               </div>
             </CardContent>
           </Card>
+            </div>
         )
       })}
     </div>

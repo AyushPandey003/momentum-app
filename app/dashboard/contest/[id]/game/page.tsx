@@ -43,6 +43,16 @@ interface GameState {
   } | null;
 }
 
+const normalizePlayers = (players: any[]): Player[] => {
+  if (!players || !Array.isArray(players)) return [];
+  return players.map((p) => ({
+    ...p,
+    userId: p.userId || p.user_id || p.id,
+    username: p.username || p.name || "Unknown",
+    score: p.score || 0,
+  }));
+};
+
 export default function ContestGamePage() {
   const params = useParams();
   const router = useRouter();
@@ -68,12 +78,23 @@ export default function ContestGamePage() {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const [contestCreatorId, setContestCreatorId] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const tokenRef = useRef<string | null>(null); // Cache token to avoid repeated API calls
   const isConnectingRef = useRef(false); // Prevent multiple simultaneous connections
   const latestStatusRef = useRef<GameState["status"]>("connecting");
 
-  // WebSocket URL from environment or default (Go service on port 8080)
+  // WebSocket URL from environment or browser fallback
   const WS_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+
+  const getWebSocketBaseUrl = useCallback(() => {
+    if (WS_URL) return WS_URL;
+    if (typeof window !== "undefined") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.host}`;
+    }
+    return "";
+  }, [WS_URL]);
 
   // Validate session state on mount to prevent mismatches
   useEffect(() => {
@@ -119,8 +140,15 @@ export default function ContestGamePage() {
     }
 
     isConnectingRef.current = true;
+    setConnectionError(null);
+    setIsReconnecting(reconnectAttempts.current > 0);
 
     try {
+      const wsBase = getWebSocketBaseUrl();
+      if (!wsBase) {
+        throw new Error("WebSocket URL is not configured");
+      }
+
       // Use cached token if available, otherwise fetch new one
       let token = tokenRef.current;
       
@@ -148,7 +176,7 @@ export default function ContestGamePage() {
       }
 
       // Connect to WebSocket - Go service uses /ws/contests/{id} format
-      const ws = new WebSocket(`${WS_URL}/ws/contests/${contestId}?token=${token}`);
+      const ws = new WebSocket(`${wsBase}/ws/contests/${contestId}?token=${token}`);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -156,6 +184,8 @@ export default function ContestGamePage() {
         setGameState((prev) => ({ ...prev, status: "waiting" }));
         reconnectAttempts.current = 0;
         isConnectingRef.current = false;
+        setIsReconnecting(false);
+        setConnectionError(null);
       };
 
       ws.onmessage = (event) => {
@@ -167,6 +197,7 @@ export default function ContestGamePage() {
       ws.onclose = (event) => {
         console.log("WebSocket closed:", event.code, event.reason);
         isConnectingRef.current = false;
+        setIsReconnecting(false);
         
         // Don't reconnect if it was a normal closure or game is finished
         if (event.code === 1000 || latestStatusRef.current === "finished") {
@@ -175,6 +206,7 @@ export default function ContestGamePage() {
 
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
+          setIsReconnecting(true);
           setTimeout(() => {
             toast({
               title: "Reconnecting...",
@@ -183,12 +215,13 @@ export default function ContestGamePage() {
             connectWebSocket();
           }, 2000 * reconnectAttempts.current);
         } else {
+          setConnectionError("Connection to the contest server was lost.");
+          setGameState((prev) => ({ ...prev, status: "connecting" }));
           toast({
             title: "Connection Lost",
-            description: "Could not reconnect to game server",
+            description: "Could not reconnect to game server. Use retry to reconnect.",
             variant: "destructive",
           });
-          router.push(`/dashboard/contest/${contestId}/lobby`);
         }
       };
 
@@ -200,13 +233,15 @@ export default function ContestGamePage() {
     } catch (error) {
       console.error("Error connecting to WebSocket:", error);
       isConnectingRef.current = false;
+      setIsReconnecting(false);
+      setConnectionError(error instanceof Error ? error.message : "Could not connect to game server");
       toast({
         title: "Connection Failed",
         description: "Could not connect to game server",
         variant: "destructive",
       });
     }
-  }, [contestId, session?.user, router, toast, WS_URL]);
+  }, [contestId, session?.user, router, toast, getWebSocketBaseUrl]);
 
   // Fetch contest participant details to determine if user is organizer/host
   useEffect(() => {
@@ -267,7 +302,7 @@ export default function ContestGamePage() {
         if (payload.players) {
           setGameState((prev) => ({
             ...prev,
-            players: payload.players,
+            players: normalizePlayers(payload.players),
           }));
           
           toast({
@@ -278,6 +313,12 @@ export default function ContestGamePage() {
         break;
 
       case "PLAYER_LEFT":
+        if (payload.players) {
+          setGameState((prev) => ({
+            ...prev,
+            players: normalizePlayers(payload.players),
+          }));
+        }
         toast({
           title: "Player Left",
           description: "A player left the game",
@@ -287,7 +328,7 @@ export default function ContestGamePage() {
       case "PLAYER_LIST":
         setGameState((prev) => ({
           ...prev,
-          players: payload.players,
+          players: normalizePlayers(payload.players),
         }));
         
         // Host is determined by contest creator, not first player
@@ -303,7 +344,7 @@ export default function ContestGamePage() {
           ...prev,
           status: "in_progress",
           totalQuestions: payload.total_questions,
-          players: payload.players || prev.players,
+          players: payload.players ? normalizePlayers(payload.players) : prev.players,
         }));
         break;
 
@@ -429,18 +470,13 @@ export default function ContestGamePage() {
         setGameState((prev) => ({
           ...prev,
           status: "finished",
-          players: payload.final_scoreboard || payload.scoreboard,
+          players: normalizePlayers(payload.final_scoreboard || payload.scoreboard),
         }));
         
         toast({
           title: "Game Over! 🏁",
           description: payload.message || "See the final results",
         });
-
-        // Redirect to leaderboard after 5 seconds
-        setTimeout(() => {
-          router.push(`/dashboard/contest/${contestId}/leaderboard`);
-        }, 5000);
         break;
 
       default:
@@ -465,7 +501,7 @@ export default function ContestGamePage() {
   };
 
   const submitAnswer = () => {
-    if (selectedAnswer === null || hasAnswered || !gameState.currentQuestion) return;
+    if (selectedAnswer === null || hasAnswered || !gameState.currentQuestion || questionTimer === 0) return;
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       // Go WebSocket expects { type: "SUBMIT_ANSWER", question_id: "...", answer: "..." }
@@ -514,9 +550,25 @@ export default function ContestGamePage() {
         <div className="container max-w-6xl mx-auto py-8 px-4">
           <Card>
             <CardContent className="p-8 text-center">
-              <div className="animate-pulse">
+              <div className={connectionError ? "space-y-4" : "animate-pulse"}>
                 <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <p className="text-lg">Connecting to game server...</p>
+                <p className="text-lg">{isReconnecting ? "Reconnecting to game server..." : "Connecting to game server..."}</p>
+                {connectionError && (
+                  <>
+                    <p className="text-sm text-destructive">{connectionError}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        reconnectAttempts.current = 0;
+                        setConnectionError(null);
+                        connectWebSocket();
+                      }}
+                    >
+                      Retry Connection
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -540,9 +592,9 @@ export default function ContestGamePage() {
             <CardContent>
               <div className="space-y-6">
                 <div className="grid gap-3">
-                  {gameState.players.map((player) => (
+                  {gameState.players.map((player, index) => (
                     <div
-                      key={player.userId}
+                      key={player.userId || `player-${index}`}
                       className="flex items-center gap-3 p-3 border rounded-lg"
                     >
                       <Avatar>
@@ -554,7 +606,7 @@ export default function ContestGamePage() {
                           <p className="text-sm text-muted-foreground">(You)</p>
                         )}
                       </div>
-                      {player.userId === gameState.players[0]?.userId && (
+                      {player.userId === contestCreatorId && (
                         <Badge>Host</Badge>
                       )}
                     </div>
@@ -616,7 +668,7 @@ export default function ContestGamePage() {
                   <h3 className="font-semibold text-lg">Final Standings</h3>
                   {sortedPlayers.map((player, index) => (
                     <div
-                      key={player.userId}
+                      key={player.userId || `player-${index}`}
                       className={`flex items-center gap-3 p-3 border rounded-lg ${
                         player.userId === session?.user?.id ? "bg-primary/5 border-primary" : ""
                       }`}
@@ -699,6 +751,9 @@ export default function ContestGamePage() {
                     <span className="font-bold">{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} />
+                  {isReconnecting && (
+                    <p className="text-xs text-yellow-600">Reconnecting to game server...</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -745,7 +800,7 @@ export default function ContestGamePage() {
 
                 <Button
                   onClick={submitAnswer}
-                  disabled={selectedAnswer === null || hasAnswered}
+                  disabled={selectedAnswer === null || hasAnswered || questionTimer === 0}
                   className="w-full mt-6"
                   size="lg"
                 >
@@ -757,7 +812,7 @@ export default function ContestGamePage() {
                   ) : (
                     <>
                       <Zap className="w-5 h-5 mr-2" />
-                      Submit Answer
+                      {questionTimer === 0 ? "Time's Up" : "Submit Answer"}
                     </>
                   )}
                 </Button>
@@ -803,7 +858,7 @@ export default function ContestGamePage() {
                     .sort((a, b) => b.score - a.score)
                     .map((player, index) => (
                       <div
-                        key={player.userId}
+                        key={player.userId || `player-${index}`}
                         className={`flex items-center gap-3 p-3 rounded-lg ${
                           player.userId === session?.user?.id
                             ? "bg-primary/10 border border-primary"

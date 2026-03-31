@@ -11,6 +11,7 @@ import { getCurrentUser, updateUser } from "@/lib/auth-utils"
 import { Check } from "lucide-react"
 import type { UserPreferences } from "@/lib/types"
 import { CalendarConnectionCard } from "@/components/calendar-connection-card"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any | null>(null)
@@ -48,6 +49,23 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 max-w-2xl">
+        {/* Appearance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>Choose how Momentum looks across the app</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label>Theme Palette</Label>
+                <p className="text-sm text-muted-foreground">Select mode and accent color palette</p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Calendar Connection */}
         <CalendarConnectionCard />
 

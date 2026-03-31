@@ -96,15 +96,15 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">
-            {searchParams.get("redirect") === "contest" ? "Join the Contest" : "Welcome back"}
+      <Card className="auth-enter auth-delay-2 border-border/50">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-2xl font-semibold">
+            {searchParams.get("redirect") === "contest" ? "Join The Contest" : "Sign In"}
           </CardTitle>
-          <CardDescription>
-            {searchParams.get("redirect") === "contest" 
-              ? "Login to join the contest" 
-              : "Login with your Google account"}
+          <CardDescription className="text-sm">
+            {searchParams.get("redirect") === "contest"
+              ? "Authenticate to accept your contest invite"
+              : "Continue with Google or your email credentials"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,8 +137,8 @@ export function LoginForm({
                     Or continue with
                   </span>
                 </div>
-                <div className="grid gap-6">
-                  <div className="grid gap-3">
+                <div className="grid gap-5">
+                  <div className="grid gap-4">
                     <FormField
                       control={form.control}
                       name="email"
@@ -179,8 +179,8 @@ export function LoginForm({
                         )}
                       />
                       <Link
-                        href="/forgot-password"
-                        className="ml-auto text-sm underline-offset-4 hover:underline"
+                        href="/forget-password"
+                        className="ml-auto text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                       >
                         Forgot your password?
                       </Link>

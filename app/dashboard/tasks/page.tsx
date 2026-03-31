@@ -114,33 +114,36 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground">Manage all your tasks in one place</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleConnectCalendar}
-            className="gap-2"
-          >
-            <Calendar className="h-4 w-4" />
-            Connect Calendar
-          </Button>
-          <AddTaskDialog  />
+      <div className="animate-in fade-in slide-in-from-top-2 duration-500 fill-mode-both">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 bg-clip-text text-transparent">Tasks</h1>
+            <p className="text-sm text-muted-foreground">Manage all your tasks and stay on track</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleConnectCalendar}
+              className="gap-2 hover:bg-teal-500/10 hover:text-teal-600 transition-colors"
+            >
+              <Calendar className="h-4 w-4" />
+              Connect Calendar
+            </Button>
+            <AddTaskDialog  />
+          </div>
         </div>
       </div>
 
       {upcomingEvents.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Upcoming Calendar Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <div className="animate-in fade-in slide-in-from-top-2 duration-500 delay-100 fill-mode-both">
+          <Card className="surface-glass border-teal-500/20 bg-gradient-to-br from-teal-500/5 via-cyan-500/5 to-transparent">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-teal-600 dark:text-teal-400">
+                <Calendar className="h-5 w-5" />
+                Upcoming Calendar Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
             {upcomingEvents.map((event) => (
               <div
                 key={event.id}
@@ -184,10 +187,13 @@ export default function TasksPage() {
               </p>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       )}
 
-      <TaskList />
+      <div className="animate-in fade-in slide-in-from-top-2 duration-500 delay-200 fill-mode-both">
+        <TaskList />
+      </div>
     </div>
   )
 }

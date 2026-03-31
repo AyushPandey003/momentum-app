@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,11 @@ export default function AdminProblemsPage() {
           <p className="text-muted-foreground text-lg">
             Add questions to the database that will be used in contests
           </p>
+          <div className="mt-4">
+            <Button asChild variant="outline">
+              <Link href="/dashboard/admin/question-sets">Open Question Set Picker and CSV Import</Link>
+            </Button>
+          </div>
         </div>
 
         <Card>

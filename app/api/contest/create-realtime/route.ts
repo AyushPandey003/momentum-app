@@ -4,7 +4,6 @@ import { headers } from "next/headers";
 import { db } from "@/db/drizzle";
 import { schema } from "@/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import { isContestAdminUser } from "@/lib/contest-admin";
 
 /**
  * API Route: Create Contest via Go WebSocket Service
@@ -42,17 +41,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isAdmin = isContestAdminUser(session.user);
     const selectedIds = Array.isArray(selectedQuestionIds)
       ? selectedQuestionIds.filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0)
       : [];
-
-    if (selectedIds.length > 0 && !isAdmin) {
-      return NextResponse.json(
-        { error: "Only admins can create contests from a curated question pool." },
-        { status: 403 }
-      );
-    }
 
     let validatedQuestionIds: string[] = [];
     if (selectedIds.length > 0) {

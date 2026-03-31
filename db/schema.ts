@@ -246,6 +246,24 @@ export const problemSet = pgTable("problem_set", {
     isActive: boolean('is_active').default(true).notNull()
 });
 
+export const questionPool = pgTable("question_pool", {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description'),
+    createdBy: text('created_by').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+    updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull(),
+});
+
+export const questionPoolItem = pgTable("question_pool_item", {
+    id: text('id').primaryKey(),
+    poolId: text('pool_id').notNull().references(() => questionPool.id, { onDelete: 'cascade' }),
+    problemSetId: text('problem_set_id').notNull().references(() => problemSet.id, { onDelete: 'cascade' }),
+    orderIndex: integer('order_index').default(0).notNull(),
+    createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+});
+
 export const contestQuestion = pgTable("contest_question", {
     id: text('id').primaryKey(),
     contestId: text('contest_id').notNull().references(() => contest.id, { onDelete: 'cascade' }),
@@ -336,7 +354,27 @@ export const problemSetRelations = relations(problemSet, ({ one, many }) => ({
     }),
     contestQuestions: many(contestQuestion),
     submissions: many(contestSubmission),
-    playerAnswers: many(playerAnswer)
+    playerAnswers: many(playerAnswer),
+    questionPoolItems: many(questionPoolItem)
+}));
+
+export const questionPoolRelations = relations(questionPool, ({ one, many }) => ({
+    creator: one(user, {
+        fields: [questionPool.createdBy],
+        references: [user.id]
+    }),
+    items: many(questionPoolItem)
+}));
+
+export const questionPoolItemRelations = relations(questionPoolItem, ({ one }) => ({
+    pool: one(questionPool, {
+        fields: [questionPoolItem.poolId],
+        references: [questionPool.id]
+    }),
+    problemSet: one(problemSet, {
+        fields: [questionPoolItem.problemSetId],
+        references: [problemSet.id]
+    })
 }));
 
 export const contestQuestionRelations = relations(contestQuestion, ({ one }) => ({
@@ -399,6 +437,8 @@ export type ContestQuestion = typeof contestQuestion.$inferSelect;
 export type ContestSubmission = typeof contestSubmission.$inferSelect;
 export type PlayerAnswer = typeof playerAnswer.$inferSelect;
 export type ContestResult = typeof contestResult.$inferSelect;
+export type QuestionPool = typeof questionPool.$inferSelect;
+export type QuestionPoolItem = typeof questionPoolItem.$inferSelect;
 export type User = typeof user.$inferSelect;
 
 export const schema = { 
@@ -416,6 +456,8 @@ export const schema = {
     contestInvitation,
     contestParticipant,
     problemSet,
+    questionPool,
+    questionPoolItem,
     contestQuestion,
     contestSubmission,
     playerAnswer,
@@ -424,6 +466,8 @@ export const schema = {
     contestParticipantRelations,
     contestInvitationRelations,
     problemSetRelations,
+    questionPoolRelations,
+    questionPoolItemRelations,
     contestQuestionRelations,
     contestSubmissionRelations,
     playerAnswerRelations,
